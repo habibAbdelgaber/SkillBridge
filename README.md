@@ -1,0 +1,1 @@
+SkillBridge is an MVP (Minimum Viable Product) marketplace that connects service providers with customers. Providers can offer their services and get paid directly through the platform, while customers can easily discover providers, explore available services, make bookings, and pay online - all in one seamless experience.
