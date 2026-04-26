@@ -4,13 +4,18 @@ from __future__ import annotations
 from django.conf import settings
 from django.db import connection
 from django.utils import timezone
-from rest_framework.decorators import api_view, permission_classes
+from rest_framework.decorators import (
+    api_view,
+    authentication_classes,
+    permission_classes,
+)
 from rest_framework.permissions import AllowAny
 from rest_framework.request import Request
 from rest_framework.response import Response
 
 
 @api_view(["GET"])
+@authentication_classes([])  # probe must ignore stale/invalid tokens.
 @permission_classes([AllowAny])
 def health_check(_: Request) -> Response:
     """Lightweight liveness/readiness probe.

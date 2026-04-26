@@ -7,6 +7,7 @@ override only what they need.
 from __future__ import annotations
 
 import os
+from datetime import timedelta
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -51,11 +52,22 @@ DJANGO_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "django.contrib.sites",
 ]
 
 THIRD_PARTY_APPS = [
     "rest_framework",
+    "rest_framework.authtoken",
+    "rest_framework_simplejwt",
+    "rest_framework_simplejwt.token_blacklist",
     "corsheaders",
+    "allauth",
+    "allauth.account",
+    "allauth.socialaccount",
+    "allauth.socialaccount.providers.google",
+    "allauth.socialaccount.providers.facebook",
+    "dj_rest_auth",
+    "dj_rest_auth.registration",
 ]
 
 LOCAL_APPS = [
@@ -66,6 +78,8 @@ LOCAL_APPS = [
 ]
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
+
+SITE_ID = int(os.environ.get("SITE_ID", "1"))
 
 
 # ---------------------------------------------------------------------------
@@ -80,7 +94,15 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "allauth.account.middleware.AccountMiddleware",
 ]
+
+AUTHENTICATION_BACKENDS = [
+    "django.contrib.auth.backends.ModelBackend",
+    "allauth.account.auth_backends.AuthenticationBackend",
+]
+
+AUTH_USER_MODEL = "users.User"
 
 ROOT_URLCONF = "config.urls"
 WSGI_APPLICATION = "config.wsgi.application"
@@ -151,21 +173,124 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 # ---------------------------------------------------------------------------
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
+        "rest_framework_simplejwt.authentication.JWTAuthentication",
         "rest_framework.authentication.SessionAuthentication",
     ),
     "DEFAULT_PERMISSION_CLASSES": (
-        "rest_framework.permissions.AllowAny",
+        "rest_framework.permissions.IsAuthenticated",
     ),
     "DEFAULT_RENDERER_CLASSES": (
         "rest_framework.renderers.JSONRenderer",
     ),
     "DEFAULT_PARSER_CLASSES": (
         "rest_framework.parsers.JSONParser",
+        "rest_framework.parsers.FormParser",
+        "rest_framework.parsers.MultiPartParser",
     ),
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
     "PAGE_SIZE": 20,
     "TEST_REQUEST_DEFAULT_FORMAT": "json",
 }
+
+
+# ---------------------------------------------------------------------------
+# SimpleJWT
+# ---------------------------------------------------------------------------
+SIMPLE_JWT = {
+    "ACCESS_TOKEN_LIFETIME": timedelta(
+        minutes=int(os.environ.get("JWT_ACCESS_TOKEN_LIFETIME_MINUTES", "15"))
+    ),
+    "REFRESH_TOKEN_LIFETIME": timedelta(
+        days=int(os.environ.get("JWT_REFRESH_TOKEN_LIFETIME_DAYS", "7"))
+    ),
+    "ROTATE_REFRESH_TOKENS": True,
+    "BLACKLIST_AFTER_ROTATION": True,
+    "UPDATE_LAST_LOGIN": True,
+    "AUTH_HEADER_TYPES": ("Bearer",),
+    "USER_ID_FIELD": "id",
+    "USER_ID_CLAIM": "user_id",
+    "SIGNING_KEY": os.environ.get("JWT_SIGNING_KEY", SECRET_KEY),
+}
+
+
+# ---------------------------------------------------------------------------
+# dj-rest-auth / allauth
+# ---------------------------------------------------------------------------
+REST_AUTH = {
+    "USE_JWT": True,
+    "JWT_AUTH_COOKIE": None,
+    "JWT_AUTH_REFRESH_COOKIE": None,
+    "JWT_AUTH_HTTPONLY": False,
+    "SESSION_LOGIN": False,
+    "TOKEN_MODEL": None,  # using JWT, not DRF TokenAuthentication
+    "REGISTER_SERIALIZER": "apps.users.serializers.CustomerRegisterSerializer",
+    "USER_DETAILS_SERIALIZER": "apps.users.serializers.UserSerializer",
+    "PASSWORD_RESET_SERIALIZER": "apps.users.serializers.FrontendPasswordResetSerializer",
+    "OLD_PASSWORD_FIELD_ENABLED": True,
+}
+
+# AllAuth - account behavior (allauth 65+).
+# ``ACCOUNT_USER_MODEL_USERNAME_FIELD = None`` tells allauth our user model
+# has no username column. The legacy ``ACCOUNT_AUTHENTICATION_METHOD`` /
+# ``ACCOUNT_EMAIL_REQUIRED`` / ``ACCOUNT_USERNAME_REQUIRED`` flags were
+# superseded in 65.x by ``ACCOUNT_LOGIN_METHODS`` and ``ACCOUNT_SIGNUP_FIELDS``.
+ACCOUNT_USER_MODEL_USERNAME_FIELD = None
+ACCOUNT_LOGIN_METHODS = {"email"}
+ACCOUNT_SIGNUP_FIELDS = ["email*", "password1*", "password2*"]
+ACCOUNT_UNIQUE_EMAIL = True
+ACCOUNT_EMAIL_VERIFICATION = os.environ.get("ACCOUNT_EMAIL_VERIFICATION", "mandatory")
+ACCOUNT_CONFIRM_EMAIL_ON_GET = False
+ACCOUNT_LOGIN_ON_EMAIL_CONFIRMATION = False
+ACCOUNT_LOGIN_ON_PASSWORD_RESET = False
+ACCOUNT_PRESERVE_USERNAME_CASING = False
+ACCOUNT_RATE_LIMITS = {
+    "login_failed": "5/5m",
+    "signup": "20/h",
+    "reset_password": "5/h",
+    "confirm_email": "10/h",
+}
+ACCOUNT_ADAPTER = "apps.users.adapters.AccountAdapter"
+SOCIALACCOUNT_ADAPTER = "apps.users.adapters.SocialAccountAdapter"
+
+# Social auth - providers pick up credentials from the environment.
+# Leaving these blank is safe; the provider simply won't authenticate until
+# credentials are added. This keeps the project ready for later activation.
+SOCIALACCOUNT_EMAIL_VERIFICATION = "none"
+SOCIALACCOUNT_EMAIL_REQUIRED = True
+SOCIALACCOUNT_QUERY_EMAIL = True
+SOCIALACCOUNT_STORE_TOKENS = False
+
+SOCIALACCOUNT_PROVIDERS = {
+    "google": {
+        "APP": {
+            "client_id": os.environ.get("GOOGLE_OAUTH_CLIENT_ID", ""),
+            "secret": os.environ.get("GOOGLE_OAUTH_CLIENT_SECRET", ""),
+            "key": "",
+        },
+        "SCOPE": ["profile", "email"],
+        "AUTH_PARAMS": {"access_type": "online"},
+    },
+    "facebook": {
+        "APP": {
+            "client_id": os.environ.get("FACEBOOK_OAUTH_CLIENT_ID", ""),
+            "secret": os.environ.get("FACEBOOK_OAUTH_CLIENT_SECRET", ""),
+            "key": "",
+        },
+        "METHOD": "oauth2",
+        "SCOPE": ["email", "public_profile"],
+        "AUTH_PARAMS": {"auth_type": "reauthenticate"},
+        "FIELDS": ["id", "email", "name", "first_name", "last_name"],
+        "VERIFIED_EMAIL": False,
+        "VERSION": "v18.0",
+    },
+}
+
+
+# ---------------------------------------------------------------------------
+# Frontend URL (used in password-reset and social callback links)
+# ---------------------------------------------------------------------------
+FRONTEND_URL = os.environ.get("FRONTEND_URL", "http://localhost:5173")
+DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", "no-reply@skillbridge.local")
 
 
 # ---------------------------------------------------------------------------

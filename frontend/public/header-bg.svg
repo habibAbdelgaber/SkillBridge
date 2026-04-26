@@ -1,0 +1,86 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 80" preserveAspectRatio="xMaxYMid slice" role="img" aria-label="">
+  <title>SkillBridge header motif</title>
+  <desc>Decorative header background — a faint constellation of marketplace nodes connected by dashed paths, terminating in the SkillBridge bridge mark on the right.</desc>
+
+  <defs>
+    <linearGradient id="trail" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#2171b5" stop-opacity="0"/>
+      <stop offset="0.35" stop-color="#2171b5" stop-opacity="0.18"/>
+      <stop offset="1" stop-color="#2171b5" stop-opacity="0.32"/>
+    </linearGradient>
+    <linearGradient id="trail-dim" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#9ecae1" stop-opacity="0"/>
+      <stop offset="0.5" stop-color="#9ecae1" stop-opacity="0.5"/>
+      <stop offset="1" stop-color="#9ecae1" stop-opacity="0.7"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Dashed connector trails leading to the bridge mark on the right -->
+  <g fill="none" stroke="url(#trail-dim)" stroke-width="1.2" stroke-dasharray="3 7">
+    <path d="M 380 28 Q 700 22 1080 36"/>
+    <path d="M 460 56 Q 780 60 1100 44"/>
+    <path d="M 600 40 Q 880 36 1120 40"/>
+  </g>
+
+  <!-- Marketplace nodes scattered along the trail -->
+  <g fill="#2171b5" opacity="0.35">
+    <circle cx="380" cy="28" r="2.5"/>
+    <circle cx="540" cy="48" r="2"/>
+    <circle cx="700" cy="22" r="2.5"/>
+    <circle cx="820" cy="44" r="2"/>
+    <circle cx="940" cy="32" r="2.5"/>
+    <circle cx="1040" cy="48" r="2"/>
+  </g>
+  <g fill="#9ecae1" opacity="0.5">
+    <circle cx="460" cy="56" r="1.6"/>
+    <circle cx="620" cy="36" r="1.6"/>
+    <circle cx="780" cy="58" r="1.6"/>
+    <circle cx="900" cy="20" r="1.6"/>
+    <circle cx="1000" cy="56" r="1.6"/>
+  </g>
+
+  <!-- Sparkle accents (skill / star motif) -->
+  <g fill="#2171b5" opacity="0.22">
+    <path d="M 660 14 L 662 18 L 666 19 L 662 20 L 660 24 L 658 20 L 654 19 L 658 18 Z"/>
+    <path d="M 880 64 L 882 67 L 885 68 L 882 69 L 880 72 L 878 69 L 875 68 L 878 67 Z"/>
+    <path d="M 1000 12 L 1002 15 L 1005 16 L 1002 17 L 1000 20 L 998 17 L 995 16 L 998 15 Z"/>
+  </g>
+
+  <!-- SkillBridge bridge mark — faint, on the right -->
+  <g transform="translate(1240,40)" fill="none" stroke-linecap="round" stroke-linejoin="round" opacity="0.55">
+    <path d="M -56 14 Q 0 -42 56 14" stroke="#08306b" stroke-width="3.2"/>
+    <line x1="-56" y1="14" x2="-56" y2="32" stroke="#08306b" stroke-width="3.2"/>
+    <line x1="56" y1="14" x2="56" y2="32" stroke="#08306b" stroke-width="3.2"/>
+    <line x1="-34" y1="22" x2="-34" y2="32" stroke="#2171b5" stroke-width="2.4"/>
+    <line x1="0" y1="6" x2="0" y2="32" stroke="#2171b5" stroke-width="2.4"/>
+    <line x1="34" y1="22" x2="34" y2="32" stroke="#2171b5" stroke-width="2.4"/>
+  </g>
+
+  <!-- Outermost bridge ring — single faint pulse -->
+  <circle cx="1240" cy="40" r="74" fill="none" stroke="#9ecae1" stroke-width="0.8" stroke-dasharray="2 5" opacity="0.45"/>
+  <circle cx="1240" cy="40" r="56" fill="none" stroke="#2171b5" stroke-width="0.6" opacity="0.18"/>
+
+  <!-- Tiny service-tile icons on the far right (gear, spanner-style abstract) -->
+  <g transform="translate(1420,40)" stroke="#2171b5" stroke-width="1.4" fill="none" opacity="0.42" stroke-linecap="round">
+    <circle cx="0" cy="0" r="9"/>
+    <circle cx="0" cy="0" r="3"/>
+    <line x1="0" y1="-9" x2="0" y2="-13"/>
+    <line x1="0" y1="9" x2="0" y2="13"/>
+    <line x1="-9" y1="0" x2="-13" y2="0"/>
+    <line x1="9" y1="0" x2="13" y2="0"/>
+    <line x1="-6.4" y1="-6.4" x2="-9.2" y2="-9.2"/>
+    <line x1="6.4" y1="-6.4" x2="9.2" y2="-9.2"/>
+    <line x1="-6.4" y1="6.4" x2="-9.2" y2="9.2"/>
+    <line x1="6.4" y1="6.4" x2="9.2" y2="9.2"/>
+  </g>
+
+  <g transform="translate(1480,40)" stroke="#08519c" stroke-width="1.4" fill="none" opacity="0.42" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M -8 -8 L 8 8"/>
+    <path d="M -10 -6 L -6 -10 L -2 -6 L -6 -2 Z" fill="#08519c" fill-opacity="0.3"/>
+    <path d="M 6 2 L 10 6 L 6 10 L 2 6 Z" fill="#08519c" fill-opacity="0.3"/>
+  </g>
+
+  <g transform="translate(1540,40)" stroke="#2171b5" stroke-width="1.4" fill="#2171b5" fill-opacity="0.3" opacity="0.5" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 0 -10 L 3 -3 L 10 -2 L 5 3 L 6 10 L 0 7 L -6 10 L -5 3 L -10 -2 L -3 -3 Z"/>
+  </g>
+</svg>
