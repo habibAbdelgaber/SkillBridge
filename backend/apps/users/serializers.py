@@ -18,7 +18,11 @@ from apps.users.models import ProviderProfile, User
 
 
 class ProviderProfileSerializer(serializers.ModelSerializer):
-    """Public representation of a provider's onboarding profile."""
+    """Self-service representation: the provider editing their own profile.
+
+    Exposes KYC-sensitive fields (``tax_id``, ``license_or_certification_number``,
+    ``insurance_provider``) because the owner is the only consumer.
+    """
 
     class Meta:
         model = ProviderProfile
@@ -39,6 +43,38 @@ class ProviderProfileSerializer(serializers.ModelSerializer):
             "updated_at",
         )
         read_only_fields = ("id", "is_verified", "created_at", "updated_at")
+
+
+class PublicProviderProfileSerializer(serializers.ModelSerializer):
+    """Marketplace-facing provider card.
+
+    KYC fields (tax ID, license number, insurance provider) are deliberately
+    omitted; ``is_verified`` is exposed as a trust signal but the underlying
+    documentation never leaves the admin surface.
+    """
+
+    user_id = serializers.UUIDField(source="user.id", read_only=True)
+    full_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = ProviderProfile
+        fields = (
+            "id",
+            "user_id",
+            "full_name",
+            "business_name",
+            "business_type",
+            "service_category",
+            "years_of_experience",
+            "service_area",
+            "short_bio",
+            "is_verified",
+            "created_at",
+        )
+        read_only_fields = fields
+
+    def get_full_name(self, obj: ProviderProfile) -> str:
+        return obj.user.get_full_name()
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -184,12 +220,12 @@ class FrontendPasswordResetSerializer(BasePasswordResetSerializer):
 
     Two pieces work together:
 
-    1. ``password_reset_form_class`` — a subclass of Django's
+    1. ``password_reset_form_class`` - a subclass of Django's
        ``PasswordResetForm`` that does NOT call ``reverse('password_reset_confirm')``.
        The SPA owns the confirm step, so that URL name is intentionally absent
        from this project's URL conf. The form builds the SPA URL itself.
 
-    2. ``get_email_options`` — surfaces ``frontend_url`` to the email template
+    2. ``get_email_options`` - surfaces ``frontend_url`` to the email template
        in case the (HTML) template wants to use brand colors keyed off the host.
 
     The frontend receives ``uid`` and ``token`` as URL params on

@@ -1,6 +1,7 @@
 import { Route, Routes } from "react-router-dom";
 
 import { RedirectIfAuthed } from "@/components/auth/RedirectIfAuthed";
+import { LandingLayout } from "@/components/landing/LandingLayout";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { ForgotPasswordPage } from "@/pages/auth/ForgotPasswordPage";
 import { LoginPage } from "@/pages/auth/LoginPage";
@@ -9,16 +10,19 @@ import { RegisterPage } from "@/pages/auth/RegisterPage";
 import { ResetPasswordConfirmPage } from "@/pages/auth/ResetPasswordConfirmPage";
 import { VerifyEmailPage } from "@/pages/auth/VerifyEmailPage";
 import { VerifyEmailSentPage } from "@/pages/auth/VerifyEmailSentPage";
-import { HomePage } from "@/pages/HomePage";
+import { LandingPage } from "@/pages/LandingPage";
 import { NotFoundPage } from "@/pages/NotFoundPage";
 
 export function AppRouter() {
   return (
     <Routes>
-      {/* All routes share the global navbar + footer via MainLayout. */}
-      <Route element={<MainLayout />}>
-        <Route index element={<HomePage />} />
+      {/* Public marketing surface uses its own navbar/footer IA. */}
+      <Route element={<LandingLayout />}>
+        <Route index element={<LandingPage />} />
+      </Route>
 
+      {/* Everything else still rides on the in-app shell. */}
+      <Route element={<MainLayout />}>
         {/* Auth flows. RedirectIfAuthed bounces signed-in users out of the
             signup funnel so they can't re-enter it. */}
         <Route

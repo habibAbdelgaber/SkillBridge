@@ -28,103 +28,95 @@ type RetriableConfig = InternalAxiosRequestConfig & { _retry?: boolean };
 const REFRESH_EXEMPT_PATHS = [
   "/api/v1/auth/token/refresh/",
   "/api/v1/auth/login/",
-  "/api/v1/auth/register/",
-  "/api/v1/auth/register/provider/",
   "/api/v1/auth/logout/",
 ];
 
-/** Callbacks invoked when a global logout is forced after a failed refresh. */
-type SessionExpiredHandler = () => void;
-const sessionExpiredHandlers = new Set<SessionExpiredHandler>();
-export function onSessionExpired(handler: SessionExpiredHandler): () => void {
-  sessionExpiredHandlers.add(handler);
-  return () => sessionExpiredHandlers.delete(handler);
-}
-function broadcastSessionExpired(): void {
-  authStorage.clear();
-  sessionExpiredHandlers.forEach((fn) => fn());
+function isExemptPath(url: string | undefined): boolean {
+  if (!url) return false;
+  return REFRESH_EXEMPT_PATHS.some((p) => url.includes(p));
 }
 
 export const apiClient: AxiosInstance = axios.create({
   baseURL: appConfig.apiUrl,
   timeout: 15_000,
-  withCredentials: true,
-  headers: {
-    "Content-Type": "application/json",
-    Accept: "application/json",
-  },
+  headers: { "Content-Type": "application/json" },
 });
 
-// ---- Request interceptor: inject bearer token -----------------------------
+// ---- Auth header injection -----------------------------------------------
+
 apiClient.interceptors.request.use((config) => {
   const tokens = authStorage.getTokens();
-  if (tokens?.access && config.headers) {
-    config.headers.Authorization = `Bearer ${tokens.access}`;
+  if (tokens?.access) {
+    config.headers = config.headers ?? {};
+    (config.headers as Record<string, string>).Authorization = `Bearer ${tokens.access}`;
   }
   return config;
 });
 
-// ---- Response interceptor: refresh on 401 ---------------------------------
-// A single in-flight refresh promise is shared so parallel requests that all
-// fail on 401 don't each spawn a new refresh call.
-let inflightRefresh: Promise<string> | null = null;
+// ---- Session-expired hook -------------------------------------------------
+//
+// authStore subscribes to this so it can clear local state and route the
+// user to /login when refresh definitively fails. Kept as a setter to avoid
+// a circular import between apiClient and authStore.
+type SessionExpiredHandler = () => void;
+let sessionExpiredHandler: SessionExpiredHandler | null = null;
 
-async function refreshAccessToken(): Promise<string> {
-  const tokens = authStorage.getTokens();
-  if (!tokens?.refresh) {
-    throw new Error("No refresh token available");
-  }
-  const { data } = await axios.post<{ access: string; refresh?: string }>(
-    `${appConfig.apiUrl}/api/v1/auth/token/refresh/`,
-    { refresh: tokens.refresh },
-    { headers: { "Content-Type": "application/json" } },
-  );
-  const nextTokens = {
-    access: data.access,
-    // SIMPLE_JWT.ROTATE_REFRESH_TOKENS=True means a new refresh is returned.
-    refresh: data.refresh ?? tokens.refresh,
-  };
-  authStorage.setTokens(nextTokens);
-  return nextTokens.access;
+export function onSessionExpired(handler: SessionExpiredHandler): void {
+  sessionExpiredHandler = handler;
 }
 
-function isRefreshExempt(config: AxiosRequestConfig | undefined): boolean {
-  if (!config?.url) return false;
-  return REFRESH_EXEMPT_PATHS.some((p) => config.url!.includes(p));
+// ---- Refresh interceptor --------------------------------------------------
+//
+// Single in-flight refresh promise so a burst of parallel 401s does not
+// trigger N refresh requests. All concurrent failures await the same
+// promise and replay their original requests once it resolves.
+let refreshInFlight: Promise<string | null> | null = null;
+
+async function refreshAccessToken(): Promise<string | null> {
+  const tokens = authStorage.getTokens();
+  if (!tokens?.refresh) return null;
+
+  try {
+    const { data } = await axios.post<{ access: string }>(
+      `${appConfig.apiUrl}/api/v1/auth/token/refresh/`,
+      { refresh: tokens.refresh },
+      { headers: { "Content-Type": "application/json" } },
+    );
+    authStorage.setTokens({ access: data.access, refresh: tokens.refresh });
+    return data.access;
+  } catch {
+    return null;
+  }
 }
 
 apiClient.interceptors.response.use(
   (response) => response,
   async (error: AxiosError) => {
     const original = error.config as RetriableConfig | undefined;
-
-    if (
-      error.response?.status === 401 &&
-      original &&
-      !original._retry &&
-      !isRefreshExempt(original)
-    ) {
-      original._retry = true;
-
-      try {
-        inflightRefresh = inflightRefresh ?? refreshAccessToken();
-        const access = await inflightRefresh;
-        inflightRefresh = null;
-
-        original.headers = original.headers ?? {};
-        original.headers.Authorization = `Bearer ${access}`;
-        return apiClient.request(original);
-      } catch (refreshErr) {
-        inflightRefresh = null;
-        broadcastSessionExpired();
-        return Promise.reject(refreshErr);
-      }
+    if (!original || error.response?.status !== 401 || original._retry) {
+      return Promise.reject(error);
+    }
+    if (isExemptPath(original.url)) {
+      return Promise.reject(error);
     }
 
-    if (import.meta.env.DEV) {
-      // eslint-disable-next-line no-console
-      console.error("[apiClient]", error.message, error.response?.data);
+    original._retry = true;
+
+    if (!refreshInFlight) {
+      refreshInFlight = refreshAccessToken().finally(() => {
+        refreshInFlight = null;
+      });
     }
-    return Promise.reject(error);
+    const newAccess = await refreshInFlight;
+
+    if (!newAccess) {
+      authStorage.clear();
+      sessionExpiredHandler?.();
+      return Promise.reject(error);
+    }
+
+    original.headers = original.headers ?? {};
+    (original.headers as Record<string, string>).Authorization = `Bearer ${newAccess}`;
+    return apiClient.request(original as AxiosRequestConfig);
   },
 );

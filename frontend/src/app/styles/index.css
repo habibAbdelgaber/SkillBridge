@@ -9,6 +9,15 @@
     height: 100%;
   }
 
+  /* Smooth in-page anchor scrolling for users who don't ask to dampen
+     motion. Pair with `scroll-mt-*` on each anchor target so the sticky
+     navbar (h-16 = 64px) doesn't crop the heading. */
+  @media (prefers-reduced-motion: no-preference) {
+    html {
+      scroll-behavior: smooth;
+    }
+  }
+
   body {
     @apply bg-brand-background text-brand font-sans antialiased;
     font-feature-settings: "cv11", "ss01";

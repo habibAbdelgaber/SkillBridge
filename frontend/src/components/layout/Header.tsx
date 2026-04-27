@@ -10,7 +10,7 @@ export function Header() {
 
   return (
     <header className="relative overflow-hidden border-b border-brand-borderLight bg-white/80 backdrop-blur">
-      {/* Decorative SkillBridge motif — sits behind the nav, faded toward the
+      {/* Decorative SkillBridge motif - sits behind the nav, faded toward the
           left so it never competes with the logo or links. Hidden on small
           screens where the nav already fills the available width. */}
       <div
