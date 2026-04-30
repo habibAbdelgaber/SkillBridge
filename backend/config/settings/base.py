@@ -187,7 +187,7 @@ REST_FRAMEWORK = {
         "rest_framework.parsers.FormParser",
         "rest_framework.parsers.MultiPartParser",
     ),
-    "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
+    "DEFAULT_PAGINATION_CLASS": "apps.common.pagination.StandardResultsPagination",
     "PAGE_SIZE": 20,
     "TEST_REQUEST_DEFAULT_FORMAT": "json",
 }

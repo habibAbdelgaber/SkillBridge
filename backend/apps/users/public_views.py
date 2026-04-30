@@ -24,16 +24,28 @@ class PublicProviderViewSet(
     - Restricted to active provider users to avoid surfacing soft-deleted
       accounts; ``is_verified`` is exposed as a trust badge but is *not*
       a filter (unverified providers should still be discoverable).
-    - Search across business name and service category for the listing
-      page; ordering by ``business_name`` for deterministic pagination.
+    - Search across business name, headline, and service category for the
+      listing page; ordering by ``business_name`` for deterministic
+      pagination.
+    - The retrieve action upgrades to ``PublicProviderDetailSerializer``
+      so the profile page receives services + reviews in one round-trip.
     """
 
-    serializer_class = PublicProviderProfileSerializer
     permission_classes = (permissions.AllowAny,)
     authentication_classes: tuple = ()
     filter_backends = (filters.SearchFilter, filters.OrderingFilter)
-    search_fields = ("business_name", "service_category", "service_area")
-    ordering_fields = ("business_name", "created_at", "years_of_experience")
+    search_fields = (
+        "business_name",
+        "headline",
+        "service_category",
+        "service_area",
+    )
+    ordering_fields = (
+        "business_name",
+        "created_at",
+        "years_of_experience",
+        "rating_average",
+    )
     ordering = ("business_name",)
 
     queryset = (
@@ -41,3 +53,12 @@ class PublicProviderViewSet(
         .select_related("user")
         .filter(user__is_active=True)
     )
+
+    def get_serializer_class(self):
+        # Local import keeps the users app from importing services at module
+        # load time (services already imports users.serializers).
+        if self.action == "retrieve":
+            from apps.services.serializers import PublicProviderDetailSerializer
+
+            return PublicProviderDetailSerializer
+        return PublicProviderProfileSerializer

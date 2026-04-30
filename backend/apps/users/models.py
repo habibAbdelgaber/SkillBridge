@@ -11,8 +11,10 @@ Design:
 from __future__ import annotations
 
 import uuid
+from decimal import Decimal
 
 from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin
+from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
@@ -80,7 +82,19 @@ class User(AbstractBaseUser, PermissionsMixin, TimeStampedModel):
 
 
 class ProviderProfile(TimeStampedModel):
-    """Provider-specific onboarding fields, 1:1 with a PROVIDER ``User``."""
+    """Provider-specific onboarding fields, 1:1 with a PROVIDER ``User``.
+
+    The fields below are split into three groups by responsibility:
+
+    - **Onboarding** (business_name, tax_id, etc.): captured once during
+      provider signup; mostly KYC.
+    - **Marketplace presentation** (headline, response_time_minutes, …):
+      tunable post-launch by the provider in their dashboard.
+    - **Aggregates** (rating_*, jobs_completed): denormalized counters
+      populated by signal handlers / nightly jobs once Booking and Review
+      records exist. Keeping them here avoids N+1 queries when rendering
+      listing cards.
+    """
 
     class BusinessType(models.TextChoices):
         INDIVIDUAL = "individual", _("Individual / Sole Trader")
@@ -96,6 +110,8 @@ class ProviderProfile(TimeStampedModel):
         on_delete=models.CASCADE,
         related_name="provider_profile",
     )
+
+    # ---- Onboarding -------------------------------------------------------
 
     business_name = models.CharField(_("business name"), max_length=255)
     business_type = models.CharField(
@@ -133,16 +149,103 @@ class ProviderProfile(TimeStampedModel):
         blank=True,
     )
 
+    # ---- Marketplace presentation ----------------------------------------
+
+    headline = models.CharField(
+        _("headline"),
+        max_length=180,
+        blank=True,
+        help_text=_(
+            "Short tagline shown on the provider profile and listing cards "
+            "(e.g. 'Licensed plumber, 12+ years in Tel Aviv')."
+        ),
+    )
+    response_time_minutes = models.PositiveIntegerField(
+        _("average response time (minutes)"),
+        null=True,
+        blank=True,
+        help_text=_(
+            "Rolling average reply time. Rendered to the customer as "
+            "'Replies in under N hours'."
+        ),
+    )
+
+    # ---- Trust & safety ---------------------------------------------------
+
     is_verified = models.BooleanField(
         _("verified"),
         default=False,
         help_text=_("Set by admins once KYC / onboarding documentation is reviewed."),
+    )
+    id_verified = models.BooleanField(
+        _("ID verified"),
+        default=False,
+        help_text=_("Government-issued ID has been confirmed."),
+    )
+    is_insured = models.BooleanField(
+        _("insured"),
+        default=False,
+        help_text=_(
+            "Provider has uploaded a valid insurance certificate. Distinct "
+            "from ``insurance_provider`` (free-text name) so the badge is "
+            "binary and trustworthy."
+        ),
+    )
+    background_check_completed = models.BooleanField(
+        _("background check completed"),
+        default=False,
+        help_text=_("Third-party background check has cleared."),
+    )
+
+    # ---- Denormalized aggregates -----------------------------------------
+
+    jobs_completed = models.PositiveIntegerField(
+        _("jobs completed"),
+        default=0,
+        help_text=_("Lifetime completed-booking counter; updated by signals."),
+    )
+    rating_average = models.DecimalField(
+        _("rating average"),
+        max_digits=3,
+        decimal_places=2,
+        default=Decimal("0.00"),
+        validators=(
+            MinValueValidator(Decimal("0.00")),
+            MaxValueValidator(Decimal("5.00")),
+        ),
+        help_text=_("Mean of all review ratings (0.00–5.00)."),
+    )
+    rating_count = models.PositiveIntegerField(
+        _("rating count"),
+        default=0,
+        help_text=_("Number of reviews backing ``rating_average``."),
     )
 
     class Meta:
         verbose_name = _("provider profile")
         verbose_name_plural = _("provider profiles")
         ordering = ("-created_at",)
+        indexes = (
+            # Lets the marketplace sort/filter by trust + rating without a
+            # full table scan once the directory grows past a few thousand.
+            models.Index(fields=("is_verified", "rating_average")),
+        )
 
     def __str__(self) -> str:
         return f"{self.business_name} ({self.user.email})"
+
+    @property
+    def verification_flags(self) -> list[str]:
+        """Compact list of badge slugs for the marketplace card.
+
+        Mirrors the ``VerificationFlag`` enum on the frontend so the SPA
+        can render badges without any client-side mapping logic.
+        """
+        flags: list[str] = []
+        if self.id_verified:
+            flags.append("id")
+        if self.is_insured:
+            flags.append("insured")
+        if self.background_check_completed:
+            flags.append("background")
+        return flags

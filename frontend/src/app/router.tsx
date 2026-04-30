@@ -11,14 +11,21 @@ import { ResetPasswordConfirmPage } from "@/pages/auth/ResetPasswordConfirmPage"
 import { VerifyEmailPage } from "@/pages/auth/VerifyEmailPage";
 import { VerifyEmailSentPage } from "@/pages/auth/VerifyEmailSentPage";
 import { LandingPage } from "@/pages/LandingPage";
+import { MarketplacePage } from "@/pages/marketplace/MarketplacePage";
+import { ProviderProfilePage } from "@/pages/marketplace/ProviderProfilePage";
 import { NotFoundPage } from "@/pages/NotFoundPage";
 
 export function AppRouter() {
   return (
     <Routes>
-      {/* Public marketing surface uses its own navbar/footer IA. */}
+      {/* Public marketing surface uses its own navbar/footer IA. The
+          marketplace + provider profile share that shell so users can
+          jump from the landing page into discovery without a layout
+          flicker. */}
       <Route element={<LandingLayout />}>
         <Route index element={<LandingPage />} />
+        <Route path="/marketplace" element={<MarketplacePage />} />
+        <Route path="/providers/:providerId" element={<ProviderProfilePage />} />
       </Route>
 
       {/* Everything else still rides on the in-app shell. */}

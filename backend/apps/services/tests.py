@@ -215,3 +215,143 @@ class ServicesAPITestCase(APITestCase):
         sample = resp.data["results"][0]
         for redacted in ("tax_id", "license_or_certification_number", "insurance_provider"):
             self.assertNotIn(redacted, sample)
+
+
+class MarketplaceFieldsTestCase(APITestCase):
+    """Locks in the marketplace contract added in migration 0003.
+
+    These tests don't try to exercise every code path - they assert the
+    presence and shape of the *new* fields on the public surfaces, so a
+    future refactor can't silently drop one and break the SPA's render.
+    """
+
+    @classmethod
+    def setUpTestData(cls) -> None:
+        cls.cleaning = ServiceCategory.objects.create(
+            name="Cleaning", slug="cleaning", is_active=True,
+        )
+
+        cls.provider_user = User.objects.create_user(
+            email="pro@example.com", password="proPass123!", role=User.Role.PROVIDER,
+        )
+        cls.provider = ProviderProfile.objects.create(
+            user=cls.provider_user,
+            business_name="Sparkle Pros",
+            business_type=ProviderProfile.BusinessType.LLC,
+            phone_number="+15550006000",
+            service_category="Cleaning",
+            years_of_experience=8,
+            service_area="Tel Aviv",
+            headline="Eco-friendly cleaning across Tel Aviv",
+            response_time_minutes=45,
+            id_verified=True,
+            is_insured=True,
+            background_check_completed=False,
+            jobs_completed=120,
+            rating_average=Decimal("4.85"),
+            rating_count=44,
+        )
+
+        cls.featured_service = Service.objects.create(
+            provider=cls.provider,
+            category=cls.cleaning,
+            title="Move-in deep clean",
+            subtitle="3 cleaners, full kitchen + bath sanitization",
+            slug="move-in-deep-clean",
+            description="Full apartment turnaround.",
+            price=Decimal("220.00"),
+            pricing_type=Service.PricingType.FLAT,
+            duration_minutes=240,
+            location_type=Service.LocationType.ONSITE,
+            hero_image_url="https://cdn.example.com/sparkle.jpg",
+            is_featured=True,
+            rating_average=Decimal("4.9"),
+            rating_count=12,
+            is_active=True,
+        )
+
+        cls.customer = User.objects.create_user(
+            email="customer@example.com",
+            password="custPass123!",
+            first_name="Iris",
+            last_name="Levi",
+            role=User.Role.CUSTOMER,
+        )
+
+        # One published review, one suppressed - aggregate logic isn't in
+        # scope here; we just want the public payload filtering correct.
+        cls.review_published = Review.objects.create(
+            service=cls.featured_service,
+            reviewer=cls.customer,
+            rating=5,
+            body="Spotless. Will book again.",
+            is_published=True,
+        )
+        cls.review_hidden = Review.objects.create(
+            service=cls.featured_service,
+            reviewer=cls.customer,
+            rating=1,
+            body="(moderated)",
+            is_published=False,
+        )
+
+    # ---- Service public payload -------------------------------------------
+
+    def test_public_service_includes_marketplace_fields(self):
+        from apps.services.models import Service as ServiceModel  # noqa: F401
+
+        url = reverse("services:service-detail", args=[self.featured_service.id])
+        resp = self.client.get(url)
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        body = resp.data
+        for required in (
+            "subtitle",
+            "pricing_type",
+            "hero_image_url",
+            "is_featured",
+            "rating",
+        ):
+            self.assertIn(required, body, f"missing field: {required}")
+        self.assertEqual(body["pricing_type"], "flat")
+        self.assertTrue(body["is_featured"])
+        self.assertEqual(body["rating"], {"average": 4.9, "count": 12})
+
+    # ---- Provider list payload -------------------------------------------
+
+    def test_public_provider_list_exposes_aggregates_and_verifications(self):
+        url = reverse("services:provider-list")
+        resp = self.client.get(url)
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        sample = resp.data["results"][0]
+        self.assertEqual(sample["headline"], "Eco-friendly cleaning across Tel Aviv")
+        self.assertEqual(sample["jobs_completed"], 120)
+        self.assertEqual(sample["response_time_minutes"], 45)
+        self.assertEqual(sample["rating"], {"average": 4.85, "count": 44})
+        # Verification flag list is the active set (id + insured), nothing else.
+        self.assertEqual(sorted(sample["verifications"]), ["id", "insured"])
+
+    # ---- Provider detail payload -----------------------------------------
+
+    def test_provider_detail_returns_services_and_published_reviews(self):
+        url = reverse("services:provider-detail", args=[self.provider.id])
+        resp = self.client.get(url)
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        body = resp.data
+        # Detail extends summary - inherits the rating + verifications shape.
+        self.assertIn("rating", body)
+        self.assertIn("verifications", body)
+        # Services nested without re-embedding the provider card.
+        self.assertEqual(len(body["services_offered"]), 1)
+        nested = body["services_offered"][0]
+        self.assertNotIn("provider", nested)
+        self.assertEqual(nested["pricing_type"], "flat")
+        self.assertTrue(nested["is_featured"])
+        # Reviews: only the published one, with a humanized author name.
+        self.assertEqual(len(body["reviews"]), 1)
+        review = body["reviews"][0]
+        self.assertEqual(review["rating"], 5)
+        self.assertEqual(review["author_name"], "Iris Levi")
+
+
+# Late import keeps the original ServicesAPITestCase setup module-scoped.
+from apps.services.models import Review  # noqa: E402

@@ -52,6 +52,13 @@ class UserAdmin(DjangoUserAdmin):
 
 @admin.register(ProviderProfile)
 class ProviderProfileAdmin(admin.ModelAdmin):
+    """ProviderProfile admin.
+
+    Splits fields into onboarding / marketplace / trust / aggregates so
+    the admin UI tracks the model's logical sections. Aggregate fields
+    are read-only because they're maintained by signals.
+    """
+
     list_display = (
         "business_name",
         "user",
@@ -59,8 +66,73 @@ class ProviderProfileAdmin(admin.ModelAdmin):
         "service_category",
         "service_area",
         "is_verified",
+        "rating_average",
+        "rating_count",
+        "jobs_completed",
     )
-    list_filter = ("business_type", "is_verified", "service_category")
+    list_filter = (
+        "business_type",
+        "is_verified",
+        "id_verified",
+        "is_insured",
+        "background_check_completed",
+        "service_category",
+    )
     search_fields = ("business_name", "user__email", "service_category", "service_area")
     raw_id_fields = ("user",)
-    readonly_fields = ("created_at", "updated_at")
+    readonly_fields = (
+        "created_at",
+        "updated_at",
+        "rating_average",
+        "rating_count",
+        "jobs_completed",
+    )
+
+    fieldsets = (
+        (None, {"fields": ("user", "business_name", "business_type")}),
+        (
+            _("Onboarding"),
+            {
+                "fields": (
+                    "tax_id",
+                    "phone_number",
+                    "service_category",
+                    "years_of_experience",
+                    "service_area",
+                    "license_or_certification_number",
+                    "insurance_provider",
+                )
+            },
+        ),
+        (
+            _("Marketplace presentation"),
+            {
+                "fields": (
+                    "headline",
+                    "short_bio",
+                    "response_time_minutes",
+                )
+            },
+        ),
+        (
+            _("Trust & safety"),
+            {
+                "fields": (
+                    "is_verified",
+                    "id_verified",
+                    "is_insured",
+                    "background_check_completed",
+                )
+            },
+        ),
+        (
+            _("Aggregates"),
+            {
+                "fields": ("rating_average", "rating_count", "jobs_completed"),
+                "description": _(
+                    "Maintained by signal handlers; read-only in admin."
+                ),
+            },
+        ),
+        (_("Timestamps"), {"fields": ("created_at", "updated_at")}),
+    )

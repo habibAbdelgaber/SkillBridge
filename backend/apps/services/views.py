@@ -94,8 +94,11 @@ class PublicServiceViewSet(
     authentication_classes: tuple = ()
     filter_backends = (filters.SearchFilter, filters.OrderingFilter)
     search_fields = ("title", "description", "provider__business_name")
-    ordering_fields = ("created_at", "price", "duration_minutes")
-    ordering = ("-created_at",)
+    ordering_fields = ("created_at", "price", "duration_minutes", "is_featured")
+    # Featured services first, then most-recently published. Matches the
+    # marketplace UI's "show me what's promoted, then what's fresh" intent
+    # so the first page is always representative.
+    ordering = ("-is_featured", "-created_at")
 
     def get_queryset(self):
         qs = (

@@ -51,10 +51,17 @@ class PublicProviderProfileSerializer(serializers.ModelSerializer):
     KYC fields (tax ID, license number, insurance provider) are deliberately
     omitted; ``is_verified`` is exposed as a trust signal but the underlying
     documentation never leaves the admin surface.
+
+    The ``rating`` and ``verifications`` shape mirrors the SPA's
+    ``ProviderSummary`` type so the client renders without remapping.
+    Aggregates are denormalized on ``ProviderProfile`` and refreshed when
+    reviews / bookings change.
     """
 
     user_id = serializers.UUIDField(source="user.id", read_only=True)
     full_name = serializers.SerializerMethodField()
+    rating = serializers.SerializerMethodField()
+    verifications = serializers.SerializerMethodField()
 
     class Meta:
         model = ProviderProfile
@@ -64,17 +71,32 @@ class PublicProviderProfileSerializer(serializers.ModelSerializer):
             "full_name",
             "business_name",
             "business_type",
+            "headline",
             "service_category",
             "years_of_experience",
             "service_area",
             "short_bio",
+            "response_time_minutes",
             "is_verified",
+            "jobs_completed",
+            "rating",
+            "verifications",
             "created_at",
         )
         read_only_fields = fields
 
     def get_full_name(self, obj: ProviderProfile) -> str:
         return obj.user.get_full_name()
+
+    def get_rating(self, obj: ProviderProfile) -> dict:
+        # Cast to float so JSON consumers don't need to handle Decimal.
+        return {
+            "average": float(obj.rating_average),
+            "count": obj.rating_count,
+        }
+
+    def get_verifications(self, obj: ProviderProfile) -> list[str]:
+        return obj.verification_flags
 
 
 class UserSerializer(serializers.ModelSerializer):
