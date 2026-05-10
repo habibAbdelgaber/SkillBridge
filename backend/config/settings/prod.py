@@ -40,6 +40,25 @@ if not ALLOWED_HOSTS:
 # queried at runtime — by then the real DATABASE_URL is bound and a real
 # Postgres connection is used.
 _database_url = os.environ.get("DATABASE_URL", "").strip()
+
+# Reject obvious non-URLs (e.g. an unresolved App Platform binding token
+# like ``${db.DATABASE_URL}`` that fell through because the component
+# name was wrong). dj_database_url would otherwise fail with an opaque
+# "No support for ''" message; treating these as unset gives the boot
+# guard below a chance to print something actionable.
+if _database_url and "://" not in _database_url:
+    import logging
+
+    logging.getLogger(__name__).error(
+        "DATABASE_URL is set but doesn't look like a URL (got %r). "
+        "Treating as unset. On DigitalOcean App Platform make sure the "
+        "binding token matches your database component name "
+        "(e.g. DATABASE_URL=${db.DATABASE_URL} where 'db' is the "
+        "component slug).",
+        _database_url,
+    )
+    _database_url = ""
+
 _has_db_fallback = all(
     os.environ.get(name, "").strip() for name in ("DB_NAME", "DB_USER", "DB_HOST")
 )
