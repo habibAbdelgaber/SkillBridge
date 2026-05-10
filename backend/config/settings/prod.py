@@ -31,7 +31,19 @@ if not ALLOWED_HOSTS:
 
 
 # Prefer DATABASE_URL; keep DB_* as a deployment fallback.
+#
+# Some PaaS providers (DigitalOcean App Platform, Heroku) don't expose
+# component-bound env vars during the BUILD phase. ``collectstatic`` and
+# ``check`` don't touch the database, so we must let the settings module
+# import cleanly even when DATABASE_URL is missing. We configure a
+# deferred-failure sentinel (SQLite in-memory) that's never actually
+# queried at runtime — by then the real DATABASE_URL is bound and a real
+# Postgres connection is used.
 _database_url = os.environ.get("DATABASE_URL", "").strip()
+_has_db_fallback = all(
+    os.environ.get(name, "").strip() for name in ("DB_NAME", "DB_USER", "DB_HOST")
+)
+DATABASE_CONFIGURED = bool(_database_url or _has_db_fallback)
 
 if _database_url:
     DATABASES = {
@@ -41,16 +53,7 @@ if _database_url:
             ssl_require=env_bool("DB_SSL_REQUIRE", default=True),
         )
     }
-else:
-    _required_db_vars = ("DB_NAME", "DB_USER", "DB_HOST")
-    _missing = [
-        name for name in _required_db_vars if not os.environ.get(name, "").strip()
-    ]
-    if _missing:
-        raise ImproperlyConfigured(
-            "Production database is not configured. Set DATABASE_URL or "
-            f"all of DB_NAME, DB_USER, DB_HOST (missing: {', '.join(_missing)})."
-        )
+elif _has_db_fallback:
     DATABASES = {
         "default": {
             "ENGINE": "django.db.backends.postgresql",
@@ -65,6 +68,40 @@ else:
             },
         }
     }
+else:
+    # Build-phase fallback. Never queried at runtime — by then App
+    # Platform has bound DATABASE_URL and the real config is loaded.
+    # Any management command that actually needs a DB (migrate, runserver,
+    # tests, shell, etc.) is checked at startup below.
+    import logging
+
+    logging.getLogger(__name__).warning(
+        "DATABASE_URL is not set; using SQLite in-memory sentinel. "
+        "Bind a Postgres component before serving traffic."
+    )
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.sqlite3",
+            "NAME": ":memory:",
+        }
+    }
+
+
+# At application boot (when gunicorn/manage.py is the entrypoint, NOT
+# during a non-DB build command), require real database configuration.
+# This gives us the same "fail fast on misconfiguration" guarantee
+# without breaking build-time collectstatic.
+import sys as _sys  # noqa: E402
+
+_NON_DB_COMMANDS = {"collectstatic", "compress", "compilemessages", "makemessages"}
+_running_db_command = not any(arg in _NON_DB_COMMANDS for arg in _sys.argv)
+if _running_db_command and not DATABASE_CONFIGURED:
+    raise ImproperlyConfigured(
+        "Production database is not configured. Set DATABASE_URL "
+        "(preferred) or DB_NAME / DB_USER / DB_HOST. App Platform users: "
+        "bind the Postgres component and set DATABASE_URL=${db.DATABASE_URL} "
+        "in the backend component's env vars."
+    )
 
 
 CORS_ALLOWED_ORIGINS = env_list("CORS_ALLOWED_ORIGINS", default="")
