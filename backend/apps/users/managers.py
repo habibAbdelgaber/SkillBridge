@@ -1,4 +1,4 @@
-"""Custom user manager for the email-first ``users.User`` model."""
+"""User manager."""
 from __future__ import annotations
 
 from typing import Any

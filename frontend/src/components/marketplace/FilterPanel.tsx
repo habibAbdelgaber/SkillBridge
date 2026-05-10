@@ -45,7 +45,12 @@ interface RadioRowProps<T extends string | number> {
   onSelect: (value: T | null) => void;
 }
 
-function RadioRow<T extends string | number>({ label, options, active, onSelect }: RadioRowProps<T>) {
+function RadioRow<T extends string | number>({
+  label,
+  options,
+  active,
+  onSelect,
+}: RadioRowProps<T>) {
   return (
     <div>
       <h4 className="text-xs font-semibold uppercase tracking-wide text-brand-muted">
@@ -75,14 +80,12 @@ function RadioRow<T extends string | number>({ label, options, active, onSelect 
   );
 }
 
-/**
- * Sidebar filter group for the marketplace listing page.
- *
- * Single-source-of-truth: the parent owns the `filters` object and this
- * panel reports back via `onChange`. State stays serializable so we can
- * lift it into the URL later without a refactor.
- */
-export function FilterPanel({ filters, onChange, onReset, className }: FilterPanelProps) {
+export function FilterPanel({
+  filters,
+  onChange,
+  onReset,
+  className,
+}: FilterPanelProps) {
   const toggleVerification = (flag: VerificationFlag) => {
     const has = filters.verifications.includes(flag);
     onChange({

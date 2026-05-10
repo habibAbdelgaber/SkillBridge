@@ -19,7 +19,11 @@ interface AvailabilityCardProps {
  * selection to the parent for navigation into the booking flow. Stays
  * self-contained — no portal, no popover.
  */
-export function AvailabilityCard({ days, onContinue, className }: AvailabilityCardProps) {
+export function AvailabilityCard({
+  days,
+  onContinue,
+  className,
+}: AvailabilityCardProps) {
   const firstAvailableIdx = days.findIndex((day) => day.slots.length > 0);
   const [activeIdx, setActiveIdx] = useState<number>(
     firstAvailableIdx >= 0 ? firstAvailableIdx : 0,
@@ -77,7 +81,8 @@ export function AvailabilityCard({ days, onContinue, className }: AvailabilityCa
                     isActive
                       ? "border-brand-primary bg-brand-primary text-white"
                       : "border-brand-borderLight bg-white text-brand-logo hover:border-brand-primary",
-                    !hasSlots && "cursor-not-allowed opacity-40 hover:border-brand-borderLight",
+                    !hasSlots &&
+                      "cursor-not-allowed opacity-40 hover:border-brand-borderLight",
                   )}
                 >
                   <span className="text-[9px] uppercase tracking-wide">
@@ -122,7 +127,9 @@ export function AvailabilityCard({ days, onContinue, className }: AvailabilityCa
                 })}
               </div>
             ) : (
-              <p className="text-sm text-brand-muted">No slots available on this day.</p>
+              <p className="text-sm text-brand-muted">
+                No slots available on this day.
+              </p>
             )}
           </div>
 

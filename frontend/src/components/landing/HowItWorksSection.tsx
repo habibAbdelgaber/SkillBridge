@@ -20,8 +20,7 @@ const STEPS: Step[] = [
   {
     number: "03",
     title: "Get the job done",
-    description:
-      "Track progress, chat with your pro, and release payment when happy.",
+    description: "Track progress, chat with your pro, and release payment when happy.",
   },
 ];
 
@@ -43,9 +42,7 @@ export function HowItWorksSection() {
             <p className="text-xs font-semibold tracking-[0.2em] text-brand-primary">
               {step.number}
             </p>
-            <h3 className="mt-3 text-lg font-semibold text-brand-logo">
-              {step.title}
-            </h3>
+            <h3 className="mt-3 text-lg font-semibold text-brand-logo">{step.title}</h3>
             <p className="mt-2 text-sm leading-relaxed text-brand-muted">
               {step.description}
             </p>

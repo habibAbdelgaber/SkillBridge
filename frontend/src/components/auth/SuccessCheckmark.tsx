@@ -1,7 +1,6 @@
 import { cn } from "@/utils/cn";
 
 interface SuccessCheckmarkProps {
-  /** Diameter in pixels via Tailwind sizing class. Default: medium (h-16 w-16). */
   size?: "sm" | "md" | "lg";
   className?: string;
 }
@@ -12,13 +11,6 @@ const SIZE_CLASS: Record<NonNullable<SuccessCheckmarkProps["size"]>, string> = {
   lg: "h-20 w-20",
 };
 
-/**
- * Animated success indicator: a green circle with a check mark drawing in.
- *
- * Pure CSS — no extra deps. Uses `stroke-dashoffset` to animate the strokes,
- * and a tiny scale-in pulse for the circle so the success feels deliberate
- * before any redirect fires.
- */
 export function SuccessCheckmark({ size = "md", className }: SuccessCheckmarkProps) {
   return (
     <span

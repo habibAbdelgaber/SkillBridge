@@ -1,9 +1,4 @@
-"""Base Django settings for the SkillBridge project.
-
-Environment-driven configuration shared by every environment. Concrete
-environment modules (``dev``, ``prod``) import from this module and
-override only what they need.
-"""
+"""Shared Django settings."""
 from __future__ import annotations
 
 import os
@@ -12,19 +7,11 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-# ---------------------------------------------------------------------------
-# Paths
-# ---------------------------------------------------------------------------
-# settings package -> config package -> backend/ (project root).
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
-# Load .env (if present) before reading any environment variables.
 load_dotenv(BASE_DIR / ".env")
 
 
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
 def env_bool(key: str, default: bool = False) -> bool:
     return os.environ.get(key, str(default)).strip().lower() in {"1", "true", "yes", "on"}
 
@@ -34,17 +21,11 @@ def env_list(key: str, default: str = "") -> list[str]:
     return [item.strip() for item in raw.split(",") if item.strip()]
 
 
-# ---------------------------------------------------------------------------
-# Core
-# ---------------------------------------------------------------------------
 SECRET_KEY = os.environ.get("SECRET_KEY", "django-insecure-change-me-in-production")
 DEBUG = env_bool("DEBUG", default=False)
 ALLOWED_HOSTS = env_list("ALLOWED_HOSTS", default="localhost,127.0.0.1")
 
 
-# ---------------------------------------------------------------------------
-# Applications
-# ---------------------------------------------------------------------------
 DJANGO_APPS = [
     "django.contrib.admin",
     "django.contrib.auth",
@@ -74,6 +55,7 @@ LOCAL_APPS = [
     "apps.common",
     "apps.users",
     "apps.services",
+    "apps.scheduling",
     "apps.bookings",
 ]
 
@@ -82,9 +64,6 @@ INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
 SITE_ID = int(os.environ.get("SITE_ID", "1"))
 
 
-# ---------------------------------------------------------------------------
-# Middleware
-# ---------------------------------------------------------------------------
 MIDDLEWARE = [
     "corsheaders.middleware.CorsMiddleware",
     "django.middleware.security.SecurityMiddleware",
@@ -109,9 +88,6 @@ WSGI_APPLICATION = "config.wsgi.application"
 ASGI_APPLICATION = "config.asgi.application"
 
 
-# ---------------------------------------------------------------------------
-# Templates
-# ---------------------------------------------------------------------------
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
@@ -128,18 +104,9 @@ TEMPLATES = [
 ]
 
 
-# ---------------------------------------------------------------------------
-# Database
-# ---------------------------------------------------------------------------
-# Intentionally left unconfigured here. Each environment module defines
-# ``DATABASES`` explicitly:
-#   - dev.py  -> SQLite (zero external dependencies)
-#   - prod.py -> Managed PostgreSQL via DATABASE_URL (DigitalOcean App Platform)
+# Each environment module defines ``DATABASES`` explicitly.
 
 
-# ---------------------------------------------------------------------------
-# Passwords
-# ---------------------------------------------------------------------------
 AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
     {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator"},
@@ -148,18 +115,12 @@ AUTH_PASSWORD_VALIDATORS = [
 ]
 
 
-# ---------------------------------------------------------------------------
-# Internationalization
-# ---------------------------------------------------------------------------
 LANGUAGE_CODE = "en-us"
 TIME_ZONE = os.environ.get("TIME_ZONE", "UTC")
 USE_I18N = True
 USE_TZ = True
 
 
-# ---------------------------------------------------------------------------
-# Static / Media
-# ---------------------------------------------------------------------------
 STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 MEDIA_URL = "media/"
@@ -168,9 +129,6 @@ MEDIA_ROOT = BASE_DIR / "media"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 
-# ---------------------------------------------------------------------------
-# Django REST Framework
-# ---------------------------------------------------------------------------
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
         "rest_framework_simplejwt.authentication.JWTAuthentication",
@@ -193,9 +151,6 @@ REST_FRAMEWORK = {
 }
 
 
-# ---------------------------------------------------------------------------
-# SimpleJWT
-# ---------------------------------------------------------------------------
 SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(
         minutes=int(os.environ.get("JWT_ACCESS_TOKEN_LIFETIME_MINUTES", "15"))
@@ -213,9 +168,6 @@ SIMPLE_JWT = {
 }
 
 
-# ---------------------------------------------------------------------------
-# dj-rest-auth / allauth
-# ---------------------------------------------------------------------------
 REST_AUTH = {
     "USE_JWT": True,
     "JWT_AUTH_COOKIE": None,
@@ -229,11 +181,7 @@ REST_AUTH = {
     "OLD_PASSWORD_FIELD_ENABLED": True,
 }
 
-# AllAuth - account behavior (allauth 65+).
-# ``ACCOUNT_USER_MODEL_USERNAME_FIELD = None`` tells allauth our user model
-# has no username column. The legacy ``ACCOUNT_AUTHENTICATION_METHOD`` /
-# ``ACCOUNT_EMAIL_REQUIRED`` / ``ACCOUNT_USERNAME_REQUIRED`` flags were
-# superseded in 65.x by ``ACCOUNT_LOGIN_METHODS`` and ``ACCOUNT_SIGNUP_FIELDS``.
+# Allauth 65+ uses these instead of the old authentication-method flags.
 ACCOUNT_USER_MODEL_USERNAME_FIELD = None
 ACCOUNT_LOGIN_METHODS = {"email"}
 ACCOUNT_SIGNUP_FIELDS = ["email*", "password1*", "password2*"]
@@ -252,9 +200,7 @@ ACCOUNT_RATE_LIMITS = {
 ACCOUNT_ADAPTER = "apps.users.adapters.AccountAdapter"
 SOCIALACCOUNT_ADAPTER = "apps.users.adapters.SocialAccountAdapter"
 
-# Social auth - providers pick up credentials from the environment.
-# Leaving these blank is safe; the provider simply won't authenticate until
-# credentials are added. This keeps the project ready for later activation.
+# Blank social credentials simply disable the provider until configured.
 SOCIALACCOUNT_EMAIL_VERIFICATION = "none"
 SOCIALACCOUNT_EMAIL_REQUIRED = True
 SOCIALACCOUNT_QUERY_EMAIL = True
@@ -286,23 +232,14 @@ SOCIALACCOUNT_PROVIDERS = {
 }
 
 
-# ---------------------------------------------------------------------------
-# Frontend URL (used in password-reset and social callback links)
-# ---------------------------------------------------------------------------
 FRONTEND_URL = os.environ.get("FRONTEND_URL", "http://localhost:5173")
 DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", "no-reply@skillbridge.local")
 
 
-# ---------------------------------------------------------------------------
-# CORS (overridden per-environment as needed)
-# ---------------------------------------------------------------------------
 CORS_ALLOWED_ORIGINS = env_list("CORS_ALLOWED_ORIGINS", default="")
 CORS_ALLOW_CREDENTIALS = env_bool("CORS_ALLOW_CREDENTIALS", default=True)
 
 
-# ---------------------------------------------------------------------------
-# Logging (shared baseline; environments tune the levels/handlers)
-# ---------------------------------------------------------------------------
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,

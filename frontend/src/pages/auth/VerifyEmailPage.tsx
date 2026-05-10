@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 
 import { AuthCard } from "@/components/auth/AuthCard";
 import { AuthLayout } from "@/components/auth/AuthLayout";
 import { FormBanner } from "@/components/auth/FormBanner";
 import { SuccessCheckmark } from "@/components/auth/SuccessCheckmark";
 import { authService } from "@/services/authService";
+import { useUIStore } from "@/store/uiStore";
 import { parseApiError } from "@/utils/parseApiError";
 
 type VerifyStatus = "verifying" | "success" | "error";
@@ -14,11 +15,12 @@ const REDIRECT_DELAY_MS = 1800;
 
 /**
  * Lands here from the verification email. Posts the key to the backend,
- * shows a result state, and forwards to /login on success.
+ * shows a result state, and opens the login modal on success.
  */
 export function VerifyEmailPage() {
   const { key } = useParams<{ key: string }>();
   const navigate = useNavigate();
+  const openAuthModal = useUIStore((s) => s.openAuthModal);
 
   const [status, setStatus] = useState<VerifyStatus>("verifying");
   const [error, setError] = useState<string | null>(null);
@@ -47,7 +49,8 @@ export function VerifyEmailPage() {
         await authService.verifyEmail(key);
         setStatus("success");
         redirectTimer = setTimeout(() => {
-          navigate("/login", { replace: true, state: { justVerified: true } });
+          navigate("/", { replace: true });
+          openAuthModal("login");
         }, REDIRECT_DELAY_MS);
       } catch (err) {
         setStatus("error");
@@ -58,7 +61,7 @@ export function VerifyEmailPage() {
     return () => {
       if (redirectTimer) clearTimeout(redirectTimer);
     };
-  }, [key, navigate]);
+  }, [key, navigate, openAuthModal]);
 
   return (
     <AuthLayout>
@@ -80,12 +83,13 @@ export function VerifyEmailPage() {
         footer={
           status !== "verifying" && (
             <span>
-              <Link
-                to="/login"
+              <button
+                type="button"
+                onClick={() => openAuthModal("login")}
                 className="font-semibold text-brand-primary hover:text-brand-primaryHover"
               >
                 Go to sign in
-              </Link>
+              </button>
             </span>
           )
         }
@@ -99,9 +103,7 @@ export function VerifyEmailPage() {
             />
           )}
           {status === "success" && <SuccessCheckmark size="lg" />}
-          {status === "error" && error && (
-            <FormBanner tone="error">{error}</FormBanner>
-          )}
+          {status === "error" && error && <FormBanner tone="error">{error}</FormBanner>}
         </div>
       </AuthCard>
     </AuthLayout>

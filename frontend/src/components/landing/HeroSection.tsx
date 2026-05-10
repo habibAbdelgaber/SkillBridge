@@ -13,9 +13,6 @@ const QUICK_FILTERS = [
 export function HeroSection() {
   return (
     <section className="relative overflow-hidden bg-gradient-to-br from-white via-brand-surface to-brand-borderLight/70">
-      {/* Soft accent blobs to give the diagonal gradient depth without
-          competing with the foreground content. Pointer-events disabled so
-          they never intercept clicks on the search bar or chips. */}
       <div
         aria-hidden="true"
         className="pointer-events-none absolute -left-24 -top-24 h-72 w-72 rounded-full bg-brand-primary/10 blur-3xl"
@@ -37,7 +34,8 @@ export function HeroSection() {
           </h1>
 
           <p className="mt-5 max-w-xl text-base leading-relaxed text-brand-muted sm:text-lg">
-            Book plumbers, cleaners, tutors, designers, and more. <br className="hidden sm:block" />
+            Book plumbers, cleaners, tutors, designers, and more.{" "}
+            <br className="hidden sm:block" />
             Pay securely through Stripe. Satisfaction guaranteed.
           </p>
 
@@ -59,8 +57,6 @@ export function HeroSection() {
         </div>
       </div>
 
-      {/* Hero / Categories divider. Soft gradient hr fades into the page
-          gutters so the seam reads as polish, not a hard cut. */}
       <div
         aria-hidden="true"
         className="relative mx-auto h-px w-full max-w-6xl bg-gradient-to-r from-transparent via-brand-borderStrong/60 to-transparent"

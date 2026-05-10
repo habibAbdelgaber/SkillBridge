@@ -20,7 +20,7 @@ from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APITestCase
 
-from apps.services.models import Service, ServiceCategory
+from apps.services.models import Review, Service, ServiceCategory
 from apps.users.models import ProviderProfile, User
 
 
@@ -351,7 +351,3 @@ class MarketplaceFieldsTestCase(APITestCase):
         review = body["reviews"][0]
         self.assertEqual(review["rating"], 5)
         self.assertEqual(review["author_name"], "Iris Levi")
-
-
-# Late import keeps the original ServicesAPITestCase setup module-scoped.
-from apps.services.models import Review  # noqa: E402

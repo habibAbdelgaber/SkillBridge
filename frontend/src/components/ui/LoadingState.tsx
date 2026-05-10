@@ -1,12 +1,9 @@
 import { cn } from "@/utils/cn";
 
 interface LoadingStateProps {
-  /** Variant that decides what skeleton geometry to render. */
   variant?: "card-grid" | "profile" | "spinner";
-  /** Card-grid only: how many skeleton cards to render. */
   count?: number;
   className?: string;
-  /** Screen-reader-only loading label. */
   label?: string;
 }
 
@@ -68,14 +65,6 @@ function Spinner({ label }: { label: string }) {
   );
 }
 
-/**
- * Loading skeletons for the marketplace surface.
- *
- * `card-grid` matches the listing-card layout, `profile` matches the
- * provider profile shell, and `spinner` is a generic fallback. Always
- * paired with an aria-live region by the consumer (`role="status"` is
- * applied here so screen readers announce the state).
- */
 export function LoadingState({
   variant = "card-grid",
   count = 6,

@@ -13,13 +13,6 @@ const OPTIONS: Array<{ value: SortOption; label: string }> = [
   { value: "price-high", label: "Price: high to low" },
 ];
 
-/**
- * Native `<select>` sort control.
- *
- * Native semantics keep keyboard / screen-reader behavior solid without
- * dragging in a popover library. The label is visually hidden but
- * remains accessible.
- */
 export function SortDropdown({ value, onChange, className }: SortDropdownProps) {
   return (
     <label className={className}>

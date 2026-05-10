@@ -10,14 +10,6 @@ interface UseProviderResult {
   refetch: () => void;
 }
 
-/**
- * Provider detail fetcher.
- *
- * Skips the network call entirely when `providerId` is falsy so the
- * profile page can render a friendly "not found" without throwing. The
- * sequence-number guard mirrors `useServices` so out-of-order responses
- * can't replace newer data.
- */
 export function useProvider(providerId: string | undefined): UseProviderResult {
   const [data, setData] = useState<ProviderDetail | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(Boolean(providerId));

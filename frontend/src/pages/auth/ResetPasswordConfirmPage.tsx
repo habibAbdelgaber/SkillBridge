@@ -9,6 +9,7 @@ import { FormField } from "@/components/forms/FormField";
 import { PasswordInput } from "@/components/forms/PasswordInput";
 import { SubmitButton } from "@/components/forms/SubmitButton";
 import { authService } from "@/services/authService";
+import { useUIStore } from "@/store/uiStore";
 import { parseApiError } from "@/utils/parseApiError";
 
 interface FormState {
@@ -37,17 +38,19 @@ function validate(state: FormState): Record<string, string> {
 /**
  * Lands here from the password-reset email at /reset-password/:uid/:token.
  * Posts the credentials to /api/v1/auth/password/reset/confirm/, shows the
- * success checkmark on a 200, then routes to /login.
+ * success checkmark on a 200, then opens the login modal.
  */
 export function ResetPasswordConfirmPage() {
   const { uid, token } = useParams<{ uid: string; token: string }>();
   const navigate = useNavigate();
+  const openAuthModal = useUIStore((s) => s.openAuthModal);
 
   const [form, setForm] = useState<FormState>(INITIAL);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
-  const [banner, setBanner] = useState<{ tone: "error" | "success"; text: string } | null>(
-    null,
-  );
+  const [banner, setBanner] = useState<{
+    tone: "error" | "success";
+    text: string;
+  } | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [succeeded, setSucceeded] = useState(false);
   const redirectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -82,18 +85,15 @@ export function ResetPasswordConfirmPage() {
       });
       setSucceeded(true);
       redirectTimerRef.current = setTimeout(() => {
-        navigate("/login", {
-          replace: true,
-          state: { passwordReset: true },
-        });
+        navigate("/", { replace: true });
+        openAuthModal("login");
       }, SUCCESS_REDIRECT_MS);
     } catch (err) {
       const parsed = parseApiError(err);
       setFieldErrors(parsed.fieldErrors);
       // dj-rest-auth surfaces "uid" / "token" failures as field errors. Promote
       // those into the banner so the user understands the link itself is bad.
-      const linkBroken =
-        parsed.fieldErrors.uid || parsed.fieldErrors.token;
+      const linkBroken = parsed.fieldErrors.uid || parsed.fieldErrors.token;
       setBanner({
         tone: "error",
         text: linkBroken
@@ -153,12 +153,13 @@ export function ResetPasswordConfirmPage() {
         footer={
           <span>
             Remembered your old one?{" "}
-            <Link
-              to="/login"
+            <button
+              type="button"
+              onClick={() => openAuthModal("login")}
               className="font-semibold text-brand-primary hover:text-brand-primaryHover"
             >
               Sign in
-            </Link>
+            </button>
           </span>
         }
       >

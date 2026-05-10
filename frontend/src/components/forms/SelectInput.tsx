@@ -9,10 +9,7 @@ interface SelectInputProps extends SelectHTMLAttributes<HTMLSelectElement> {
 }
 
 export const SelectInput = forwardRef<HTMLSelectElement, SelectInputProps>(
-  function SelectInput(
-    { className, hasError, options, placeholder, ...props },
-    ref,
-  ) {
+  function SelectInput({ className, hasError, options, placeholder, ...props }, ref) {
     return (
       <div className="relative">
         <select

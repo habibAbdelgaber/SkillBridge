@@ -1,20 +1,4 @@
-"""Production settings for the SkillBridge project.
-
-Tuned for DigitalOcean App Platform:
-
-- TLS is terminated at the platform's load balancer; Django trusts the
-  ``X-Forwarded-Proto`` header to know the original scheme.
-- PostgreSQL is provided as a managed component and injected via
-  ``DATABASE_URL``; component ``DB_*`` vars remain supported as a
-  fallback.
-- App Platform exposes the deployed hostname as ``APP_DOMAIN``; it is
-  automatically appended to ``ALLOWED_HOSTS`` and ``CSRF_TRUSTED_ORIGINS``.
-- Static files are served by WhiteNoise (no nginx sidecar on App Platform).
-
-All secrets and deployment-specific values come from the process
-environment. Missing required values raise ``ImproperlyConfigured`` at
-startup so misconfigured deploys fail fast instead of booting silently.
-"""
+"""Production settings."""
 from __future__ import annotations
 
 import os
@@ -25,9 +9,6 @@ from django.core.exceptions import ImproperlyConfigured
 from .base import *  # noqa: F401,F403
 from .base import MIDDLEWARE, env_bool, env_list
 
-# ---------------------------------------------------------------------------
-# Core
-# ---------------------------------------------------------------------------
 DEBUG = False
 
 SECRET_KEY = os.environ.get("SECRET_KEY", "")
@@ -38,8 +19,7 @@ if not SECRET_KEY or SECRET_KEY.startswith("django-insecure"):
 
 ALLOWED_HOSTS = env_list("ALLOWED_HOSTS", default="")
 
-# DigitalOcean App Platform injects the deployed hostname as APP_DOMAIN
-# (e.g. "skillbridge-abc123.ondigitalocean.app" or a custom domain).
+# DigitalOcean App Platform injects the deployed hostname as APP_DOMAIN.
 _app_domain = os.environ.get("APP_DOMAIN", "").strip()
 if _app_domain and _app_domain not in ALLOWED_HOSTS:
     ALLOWED_HOSTS.append(_app_domain)
@@ -50,11 +30,7 @@ if not ALLOWED_HOSTS:
     )
 
 
-# ---------------------------------------------------------------------------
-# Database
-# ---------------------------------------------------------------------------
-# Preferred: DATABASE_URL (App Platform's managed Postgres attachment).
-# Fallback: component-based DB_* env vars for hand-rolled deployments.
+# Prefer DATABASE_URL; keep DB_* as a deployment fallback.
 _database_url = os.environ.get("DATABASE_URL", "").strip()
 
 if _database_url:
@@ -91,9 +67,6 @@ else:
     }
 
 
-# ---------------------------------------------------------------------------
-# CORS: explicit allow-list only
-# ---------------------------------------------------------------------------
 CORS_ALLOWED_ORIGINS = env_list("CORS_ALLOWED_ORIGINS", default="")
 if not CORS_ALLOWED_ORIGINS:
     raise ImproperlyConfigured(
@@ -102,9 +75,6 @@ if not CORS_ALLOWED_ORIGINS:
 CORS_ALLOW_CREDENTIALS = env_bool("CORS_ALLOW_CREDENTIALS", default=True)
 
 
-# ---------------------------------------------------------------------------
-# CSRF: Django 4+ requires scheme-qualified trusted origins for cross-site POSTs
-# ---------------------------------------------------------------------------
 CSRF_TRUSTED_ORIGINS = env_list("CSRF_TRUSTED_ORIGINS", default="")
 if _app_domain:
     _app_origin = f"https://{_app_domain}"
@@ -112,9 +82,6 @@ if _app_domain:
         CSRF_TRUSTED_ORIGINS.append(_app_origin)
 
 
-# ---------------------------------------------------------------------------
-# Security headers & cookies
-# ---------------------------------------------------------------------------
 # App Platform terminates TLS at its edge; trust the forwarded scheme.
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 SECURE_SSL_REDIRECT = env_bool("SECURE_SSL_REDIRECT", default=True)
@@ -135,9 +102,6 @@ SESSION_COOKIE_SAMESITE = os.environ.get("SESSION_COOKIE_SAMESITE", "Lax")
 CSRF_COOKIE_SAMESITE = os.environ.get("CSRF_COOKIE_SAMESITE", "Lax")
 
 
-# ---------------------------------------------------------------------------
-# Static files: WhiteNoise (App Platform has no nginx sidecar by default)
-# ---------------------------------------------------------------------------
 MIDDLEWARE = list(MIDDLEWARE)
 _security_idx = MIDDLEWARE.index("django.middleware.security.SecurityMiddleware")
 MIDDLEWARE.insert(_security_idx + 1, "whitenoise.middleware.WhiteNoiseMiddleware")
@@ -152,9 +116,6 @@ STORAGES = {
 }
 
 
-# ---------------------------------------------------------------------------
-# Email: SMTP-backed; values must be provided via env
-# ---------------------------------------------------------------------------
 EMAIL_BACKEND = os.environ.get(
     "EMAIL_BACKEND",
     "django.core.mail.backends.smtp.EmailBackend",
@@ -167,8 +128,5 @@ EMAIL_USE_TLS = env_bool("EMAIL_USE_TLS", default=True)
 DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", "no-reply@skillbridge.local")
 
 
-# ---------------------------------------------------------------------------
-# Logging: quieter root, keep warnings and errors visible
-# ---------------------------------------------------------------------------
 LOGGING["root"]["level"] = os.environ.get("LOG_LEVEL", "INFO")  # noqa: F405
 LOGGING["loggers"]["django"]["level"] = os.environ.get("DJANGO_LOG_LEVEL", "WARNING")  # noqa: F405

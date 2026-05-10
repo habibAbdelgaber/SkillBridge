@@ -28,7 +28,9 @@ export function ProviderPreviewCard() {
             JM
           </div>
           <div className="min-w-0">
-            <p className="truncate text-sm font-semibold text-brand-logo">John Martinez</p>
+            <p className="truncate text-sm font-semibold text-brand-logo">
+              John Martinez
+            </p>
             <p className="mt-0.5 flex items-center gap-1 text-xs text-brand-muted">
               <StarIcon className="h-3.5 w-3.5 text-amber-400" />
               <span className="font-semibold text-brand-logo">4.9</span>
@@ -46,9 +48,7 @@ export function ProviderPreviewCard() {
         <ShieldCheckIcon className="mt-0.5 h-4 w-4 shrink-0 text-emerald-500" />
         <div>
           <p className="text-xs font-semibold text-brand-logo">Payment secured</p>
-          <p className="mt-0.5 text-[11px] text-brand-muted">
-            $134.50 held in escrow
-          </p>
+          <p className="mt-0.5 text-[11px] text-brand-muted">$134.50 held in escrow</p>
         </div>
       </div>
     </div>

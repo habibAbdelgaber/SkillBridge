@@ -1,11 +1,8 @@
 import axios from "axios";
 
 export interface NormalizedApiError {
-  /** Top-level banner message (non_field_errors, detail, or generic fallback). */
   message: string;
-  /** Per-field validation messages keyed by serializer field name. */
   fieldErrors: Record<string, string>;
-  /** HTTP status, if available. */
   status?: number;
 }
 
@@ -13,16 +10,7 @@ const GENERIC_FALLBACK = "Something went wrong. Please try again.";
 const NETWORK_FALLBACK =
   "We couldn't reach the SkillBridge server. Check your connection and try again.";
 
-/**
- * Normalize an unknown error thrown by Axios into a shape forms can render.
- *
- * DRF returns one of several shapes:
- *   - `{ "detail": "..." }`
- *   - `{ "non_field_errors": ["..."] }`
- *   - `{ "email": ["..."], "password1": ["..."] }`
- *   - validation dict nested under arrays
- * This helper flattens any of those into `{ message, fieldErrors }`.
- */
+/** Normalize Axios/DRF errors into a form-friendly shape. */
 export function parseApiError(error: unknown): NormalizedApiError {
   if (!axios.isAxiosError(error)) {
     return { message: GENERIC_FALLBACK, fieldErrors: {} };

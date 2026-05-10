@@ -8,23 +8,9 @@ import axios, {
 import { appConfig } from "@/app/config";
 import { authStorage } from "@/utils/authStorage";
 
-/**
- * Shared Axios instance for every SkillBridge backend call.
- *
- * Responsibilities (single source of truth):
- *   - base URL + timeout + JSON headers
- *   - injecting the current access token into every outbound request
- *   - silently refreshing the access token on a 401 and retrying the request
- *   - surfacing a clean AxiosError to callers if refresh itself fails
- *
- * Service-layer modules (e.g. `authService.ts`) import `apiClient` and never
- * talk to `axios` directly, which keeps interceptor logic in one place.
- */
-
 type RetriableConfig = InternalAxiosRequestConfig & { _retry?: boolean };
 
-/** Endpoints that must never trigger the refresh interceptor (they *are* the
- *  refresh flow, and looping into themselves would 401 forever). */
+/** Endpoints that must not enter the refresh retry loop. */
 const REFRESH_EXEMPT_PATHS = [
   "/api/v1/auth/token/refresh/",
   "/api/v1/auth/login/",
@@ -42,22 +28,27 @@ export const apiClient: AxiosInstance = axios.create({
   headers: { "Content-Type": "application/json" },
 });
 
-// ---- Auth header injection -----------------------------------------------
-
 apiClient.interceptors.request.use((config) => {
   const tokens = authStorage.getTokens();
   if (tokens?.access) {
-    config.headers = config.headers ?? {};
-    (config.headers as Record<string, string>).Authorization = `Bearer ${tokens.access}`;
+    // Axios v1 prefers headers.set; tests may still pass a plain object.
+    if (
+      config.headers &&
+      typeof (config.headers as { set?: unknown }).set === "function"
+    ) {
+      (config.headers as { set: (k: string, v: string) => void }).set(
+        "Authorization",
+        `Bearer ${tokens.access}`,
+      );
+    } else {
+      config.headers = config.headers ?? {};
+      (config.headers as Record<string, string>).Authorization =
+        `Bearer ${tokens.access}`;
+    }
   }
   return config;
 });
 
-// ---- Session-expired hook -------------------------------------------------
-//
-// authStore subscribes to this so it can clear local state and route the
-// user to /login when refresh definitively fails. Kept as a setter to avoid
-// a circular import between apiClient and authStore.
 type SessionExpiredHandler = () => void;
 let sessionExpiredHandler: SessionExpiredHandler | null = null;
 
@@ -65,11 +56,7 @@ export function onSessionExpired(handler: SessionExpiredHandler): void {
   sessionExpiredHandler = handler;
 }
 
-// ---- Refresh interceptor --------------------------------------------------
-//
-// Single in-flight refresh promise so a burst of parallel 401s does not
-// trigger N refresh requests. All concurrent failures await the same
-// promise and replay their original requests once it resolves.
+// Share one refresh request across parallel 401 responses.
 let refreshInFlight: Promise<string | null> | null = null;
 
 async function refreshAccessToken(): Promise<string | null> {
@@ -77,12 +64,16 @@ async function refreshAccessToken(): Promise<string | null> {
   if (!tokens?.refresh) return null;
 
   try {
-    const { data } = await axios.post<{ access: string }>(
+    // Persist rotated refresh tokens or the next refresh will fail.
+    const { data } = await axios.post<{ access: string; refresh?: string }>(
       `${appConfig.apiUrl}/api/v1/auth/token/refresh/`,
       { refresh: tokens.refresh },
       { headers: { "Content-Type": "application/json" } },
     );
-    authStorage.setTokens({ access: data.access, refresh: tokens.refresh });
+    authStorage.setTokens({
+      access: data.access,
+      refresh: data.refresh ?? tokens.refresh,
+    });
     return data.access;
   } catch {
     return null;
@@ -115,8 +106,19 @@ apiClient.interceptors.response.use(
       return Promise.reject(error);
     }
 
-    original.headers = original.headers ?? {};
-    (original.headers as Record<string, string>).Authorization = `Bearer ${newAccess}`;
+    if (
+      original.headers &&
+      typeof (original.headers as { set?: unknown }).set === "function"
+    ) {
+      (original.headers as { set: (k: string, v: string) => void }).set(
+        "Authorization",
+        `Bearer ${newAccess}`,
+      );
+    } else {
+      original.headers = original.headers ?? {};
+      (original.headers as Record<string, string>).Authorization =
+        `Bearer ${newAccess}`;
+    }
     return apiClient.request(original as AxiosRequestConfig);
   },
 );

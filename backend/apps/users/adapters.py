@@ -1,9 +1,4 @@
-"""AllAuth adapters.
-
-Keep the role-assignment logic in one place so both the DRF registration
-flow (``dj-rest-auth``) and the classic allauth signup flow produce
-consistent users.
-"""
+"""Allauth adapters."""
 from __future__ import annotations
 
 from typing import Any
@@ -16,14 +11,7 @@ from apps.users.models import User
 
 
 class AccountAdapter(DefaultAccountAdapter):
-    """Customize the vanilla signup flow.
-
-    The DRF ``RegisterSerializer`` subclasses in ``apps.users.serializers``
-    are responsible for promoting a user to PROVIDER; this adapter simply
-    guarantees we never persist an invalid role. It also rewrites the
-    email-confirmation URL so the link lands on the SPA, which then posts
-    the key back to ``/api/v1/auth/register/verify-email/``.
-    """
+    """Keep signup roles valid and route email confirmation through the SPA."""
 
     def is_open_for_signup(self, request) -> bool:
         return getattr(settings, "ACCOUNT_ALLOW_REGISTRATION", True)
@@ -40,11 +28,7 @@ class AccountAdapter(DefaultAccountAdapter):
         return user
 
     def get_email_confirmation_url(self, request, emailconfirmation) -> str:
-        """Send users to the SPA, not the classic allauth HTML page.
-
-        The frontend route ``/verify-email/:key`` POSTs the key back to
-        ``/api/v1/auth/registration/verify-email/`` and shows a result state.
-        """
+        """Send users to the SPA email-confirmation route."""
         frontend = getattr(settings, "FRONTEND_URL", "").rstrip("/")
         if frontend:
             return f"{frontend}/verify-email/{emailconfirmation.key}"
@@ -57,13 +41,7 @@ class AccountAdapter(DefaultAccountAdapter):
 
 
 class SocialAccountAdapter(DefaultSocialAccountAdapter):
-    """Normalize social-auth signups.
-
-    Social logins currently only produce CUSTOMER accounts; provider
-    onboarding is an explicit multi-field form and should not be performed
-    implicitly from an OAuth round-trip. If a provider wants to link a
-    social account to an existing user they do so after signing up.
-    """
+    """Social signups start as customer accounts."""
 
     def is_open_for_signup(self, request, sociallogin) -> bool:
         return getattr(settings, "SOCIALACCOUNT_ALLOW_REGISTRATION", True)

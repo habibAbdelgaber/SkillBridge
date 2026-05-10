@@ -15,7 +15,11 @@ const toneClasses: Record<StatusTone, string> = {
   neutral: "bg-brand-surface text-brand ring-brand-borderStrong",
 };
 
-export function StatusBadge({ tone = "neutral", children, className }: StatusBadgeProps) {
+export function StatusBadge({
+  tone = "neutral",
+  children,
+  className,
+}: StatusBadgeProps) {
   return (
     <span
       className={cn(

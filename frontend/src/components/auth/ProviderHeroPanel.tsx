@@ -6,11 +6,6 @@ const BENEFITS = [
   "Typical onboarding: 3 minutes",
 ];
 
-/**
- * The dark brand-blue left rail shown on the provider registration (step 2)
- * page. Mirrors the Figma hero closely (headline + benefits + earnings
- * callout), while reusing the existing brand palette.
- */
 export function ProviderHeroPanel() {
   return (
     <aside className="hidden flex-col justify-between gap-10 bg-brand-logo px-10 py-12 text-white lg:flex lg:w-[420px] xl:w-[440px]">
@@ -29,13 +24,16 @@ export function ProviderHeroPanel() {
           into income.
         </h2>
         <p className="max-w-sm text-sm leading-relaxed text-white/75">
-          Tell us a bit about your business so we can match you with the right
-          customers and set up secure payouts via Stripe.
+          Tell us a bit about your business so we can match you with the right customers
+          and set up secure payouts via Stripe.
         </p>
 
         <ul className="flex flex-col gap-2.5">
           {BENEFITS.map((benefit) => (
-            <li key={benefit} className="flex items-center gap-2.5 text-sm text-white/85">
+            <li
+              key={benefit}
+              className="flex items-center gap-2.5 text-sm text-white/85"
+            >
               <span className="flex h-5 w-5 items-center justify-center rounded-full bg-white/15">
                 <svg
                   className="h-3 w-3 text-white"

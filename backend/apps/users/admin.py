@@ -1,4 +1,4 @@
-"""Django admin registrations for User and ProviderProfile."""
+"""User admin."""
 from __future__ import annotations
 
 from django.contrib import admin
@@ -52,12 +52,7 @@ class UserAdmin(DjangoUserAdmin):
 
 @admin.register(ProviderProfile)
 class ProviderProfileAdmin(admin.ModelAdmin):
-    """ProviderProfile admin.
-
-    Splits fields into onboarding / marketplace / trust / aggregates so
-    the admin UI tracks the model's logical sections. Aggregate fields
-    are read-only because they're maintained by signals.
-    """
+    """Provider profile admin."""
 
     list_display = (
         "business_name",

@@ -1,5 +1,5 @@
 import { FormEvent, useEffect, useRef, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 
 import { AuthCard } from "@/components/auth/AuthCard";
 import { AuthLayout } from "@/components/auth/AuthLayout";
@@ -20,6 +20,7 @@ import {
 } from "@/features/auth/providerOptions";
 import { useAuthStore } from "@/store/authStore";
 import { useProviderSignupStore } from "@/store/providerSignupStore";
+import { useUIStore } from "@/store/uiStore";
 import type { BusinessType } from "@/types/auth";
 import { isLoginResponse } from "@/types/auth";
 import { parseApiError } from "@/utils/parseApiError";
@@ -81,6 +82,7 @@ export function ProviderRegistrationPage() {
   const clearDraft = useProviderSignupStore((s) => s.clearDraft);
   const registerProvider = useAuthStore((s) => s.registerProvider);
   const status = useAuthStore((s) => s.status);
+  const openAuthModal = useUIStore((s) => s.openAuthModal);
 
   const [form, setForm] = useState<FormState>(INITIAL);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
@@ -93,15 +95,16 @@ export function ProviderRegistrationPage() {
 
   const isSubmitting = status === "authenticating";
 
-  // If a user lands here directly without a draft from step 1, bounce them
-  // back to /register — this flow can't function without the email + password
-  // captured on the previous page. Suspend this guard once we've shown the
+  // If a user lands here directly without a draft from step 1, open the
+  // signup modal — this flow can't function without the email + password
+  // captured on the previous step. Suspend this guard once we've shown the
   // success state, since `clearDraft()` deliberately empties the store.
   useEffect(() => {
     if (!draft && !succeeded) {
-      navigate("/register", { replace: true });
+      navigate("/", { replace: true });
+      openAuthModal("register");
     }
-  }, [draft, succeeded, navigate]);
+  }, [draft, openAuthModal, succeeded, navigate]);
 
   useEffect(
     () => () => {
@@ -150,7 +153,7 @@ export function ProviderRegistrationPage() {
         title: "Provider account created",
         subtitle: verificationRequired
           ? "Check your inbox to verify your email and finish setup."
-          : "You're all set. Taking you to sign in…",
+          : "You're all set. Taking you to your provider dashboard…",
       });
 
       redirectTimerRef.current = setTimeout(() => {
@@ -160,7 +163,7 @@ export function ProviderRegistrationPage() {
             replace: true,
           });
         } else {
-          navigate("/login", { replace: true });
+          navigate("/dashboard/provider", { replace: true });
         }
       }, SUCCESS_REDIRECT_MS);
     } catch (err) {
@@ -190,12 +193,16 @@ export function ProviderRegistrationPage() {
         <div className="flex-1 bg-brand-background px-4 py-10 sm:px-8 lg:px-12">
           <div className="mx-auto flex max-w-3xl flex-col gap-8">
             <div className="flex items-center justify-between">
-              <Link
-                to="/register"
+              <button
+                type="button"
+                onClick={() => {
+                  navigate("/", { replace: true });
+                  openAuthModal("register");
+                }}
                 className="text-sm font-medium text-brand-primary hover:text-brand-primaryHover"
               >
                 ← Back to account
-              </Link>
+              </button>
               <StepBreadcrumb
                 steps={[
                   { label: "Account", state: "done" },
@@ -209,9 +216,9 @@ export function ProviderRegistrationPage() {
                 Tell us about your business
               </h1>
               <p className="text-sm text-brand-muted">
-                You can update these details anytime from your provider profile.
-                Fields marked <span className="font-medium">optional</span> can be
-                completed later.
+                You can update these details anytime from your provider profile. Fields
+                marked <span className="font-medium">optional</span> can be completed
+                later.
               </p>
             </header>
 
@@ -219,11 +226,7 @@ export function ProviderRegistrationPage() {
               {banner && <FormBanner tone="error">{banner}</FormBanner>}
 
               {/* 01 Business identity */}
-              <Section
-                number="01"
-                eyebrow="Who you are"
-                title="Business identity"
-              >
+              <Section number="01" eyebrow="Who you are" title="Business identity">
                 <FormField
                   label="Business or trading name"
                   htmlFor="business_name"
@@ -287,11 +290,7 @@ export function ProviderRegistrationPage() {
               </Section>
 
               {/* 02 Services & pricing */}
-              <Section
-                number="02"
-                eyebrow="Services & pricing"
-                title="What you offer"
-              >
+              <Section number="02" eyebrow="Services & pricing" title="What you offer">
                 <div className="grid gap-5 sm:grid-cols-2">
                   <FormField
                     label="Primary service category"
@@ -397,15 +396,11 @@ export function ProviderRegistrationPage() {
               </Section>
 
               {/* 03 Credentials */}
-              <Section
-                number="03"
-                eyebrow="Credentials"
-                title="Verification & trust"
-              >
+              <Section number="03" eyebrow="Credentials" title="Verification & trust">
                 <p className="-mt-1 text-xs text-brand-muted">
-                  Pros with verified credentials book 3× more jobs on average. You
-                  can skip this and complete verification later, but your profile
-                  will show as "Unverified" until then.
+                  Pros with verified credentials book 3× more jobs on average. You can
+                  skip this and complete verification later, but your profile will show
+                  as "Unverified" until then.
                 </p>
 
                 <div className="grid gap-5 sm:grid-cols-2">
@@ -454,11 +449,7 @@ export function ProviderRegistrationPage() {
               </Section>
 
               {/* 04 Payouts */}
-              <Section
-                number="04"
-                eyebrow="Payouts"
-                title="Get paid securely"
-              >
+              <Section number="04" eyebrow="Payouts" title="Get paid securely">
                 <div className="flex items-start gap-3 rounded-lg border border-brand-borderLight bg-white p-4">
                   <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand-primary/10 text-sm font-semibold text-brand-primary">
                     S
@@ -468,9 +459,9 @@ export function ProviderRegistrationPage() {
                       Set up payouts with Stripe
                     </span>
                     <span className="text-xs leading-relaxed text-brand-muted">
-                      After you create your account, we'll redirect you to Stripe
-                      to verify your identity and connect a bank account for
-                      payouts. Takes 2 – 3 minutes.
+                      After you create your account, we'll redirect you to Stripe to
+                      verify your identity and connect a bank account for payouts. Takes
+                      2 – 3 minutes.
                     </span>
                   </div>
                 </div>
@@ -496,8 +487,8 @@ export function ProviderRegistrationPage() {
                   Create provider account & continue →
                 </SubmitButton>
                 <p className="text-center text-xs text-brand-muted">
-                  You'll complete email verification and set up payouts next. No
-                  charges will be made to you.
+                  You'll complete email verification and set up payouts next. No charges
+                  will be made to you.
                 </p>
               </div>
             </form>

@@ -1,11 +1,5 @@
 import type { AuthTokens, AuthUser } from "@/types/auth";
 
-/**
- * Thin wrapper over `localStorage` for auth session persistence.
- *
- * Centralized so the storage keys and serialization format live in one place
- * — everywhere else in the app reads/writes through these helpers.
- */
 const TOKENS_KEY = "skillbridge.auth.tokens.v1";
 const USER_KEY = "skillbridge.auth.user.v1";
 
@@ -22,7 +16,7 @@ function safeSet(key: string, value: unknown): void {
   try {
     window.localStorage.setItem(key, JSON.stringify(value));
   } catch {
-    /* storage may be full / disabled — silently ignore */
+    /* storage unavailable */
   }
 }
 
@@ -30,7 +24,7 @@ function safeRemove(key: string): void {
   try {
     window.localStorage.removeItem(key);
   } catch {
-    /* noop */
+    /* storage unavailable */
   }
 }
 

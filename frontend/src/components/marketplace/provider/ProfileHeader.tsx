@@ -76,7 +76,11 @@ export function ProfileHeader({ provider, cta, className }: ProfileHeaderProps) 
                       className="h-3.5 w-3.5"
                       aria-hidden="true"
                     >
-                      <path d="M5 12.5l4 4 10-10" strokeLinecap="round" strokeLinejoin="round" />
+                      <path
+                        d="M5 12.5l4 4 10-10"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
                     </svg>
                     Verified pro
                   </span>
@@ -99,7 +103,9 @@ export function ProfileHeader({ provider, cta, className }: ProfileHeaderProps) 
                   >
                     <path d="M12 2.5l2.95 6 6.6.95-4.78 4.65 1.13 6.55L12 17.55 6.1 20.65l1.13-6.55L2.45 9.45l6.6-.95L12 2.5z" />
                   </svg>
-                  <span className="font-semibold">{provider.rating.average.toFixed(1)}</span>
+                  <span className="font-semibold">
+                    {provider.rating.average.toFixed(1)}
+                  </span>
                   <span className="text-brand-muted">{reviewLabel}</span>
                 </li>
                 <li className="inline-flex items-center gap-1.5 text-brand-muted">
@@ -112,7 +118,11 @@ export function ProfileHeader({ provider, cta, className }: ProfileHeaderProps) 
                     aria-hidden="true"
                   >
                     <circle cx="12" cy="12" r="9" />
-                    <path d="M12 7v5l3 2" strokeLinecap="round" strokeLinejoin="round" />
+                    <path
+                      d="M12 7v5l3 2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
                   </svg>
                   {tenureLabel}
                 </li>

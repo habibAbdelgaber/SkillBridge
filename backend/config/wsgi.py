@@ -1,8 +1,4 @@
-"""WSGI config for the SkillBridge project.
-
-Production-oriented default: WSGI servers (gunicorn, uWSGI) pick the
-prod settings unless DJANGO_SETTINGS_MODULE is explicitly set.
-"""
+"""WSGI entrypoint."""
 import os
 
 from django.core.wsgi import get_wsgi_application

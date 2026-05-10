@@ -1,20 +1,26 @@
 import type { ReactNode } from "react";
-import { Navigate, useLocation } from "react-router-dom";
+import { useEffect } from "react";
+import { useLocation } from "react-router-dom";
 
 import { selectIsAuthenticated, useAuthStore } from "@/store/authStore";
+import { useUIStore } from "@/store/uiStore";
 
 interface RequireAuthProps {
   children: ReactNode;
 }
 
-/**
- * Route guard: redirect to /login if no session, preserving the intended
- * destination so we can bounce the user back after they sign in.
- */
+/** Opens the login modal for guests and remembers the requested path. */
 export function RequireAuth({ children }: RequireAuthProps) {
   const isAuthenticated = useAuthStore(selectIsAuthenticated);
   const isHydrating = useAuthStore((s) => s.isHydrating);
+  const openAuthModal = useUIStore((s) => s.openAuthModal);
   const location = useLocation();
+
+  useEffect(() => {
+    if (!isHydrating && !isAuthenticated) {
+      openAuthModal("login", location.pathname);
+    }
+  }, [isAuthenticated, isHydrating, location.pathname, openAuthModal]);
 
   if (isHydrating) {
     return (
@@ -25,7 +31,11 @@ export function RequireAuth({ children }: RequireAuthProps) {
   }
 
   if (!isAuthenticated) {
-    return <Navigate to="/login" state={{ from: location.pathname }} replace />;
+    return (
+      <div className="flex min-h-full items-center justify-center p-10 text-sm text-brand-muted">
+        Sign in to continue.
+      </div>
+    );
   }
   return <>{children}</>;
 }

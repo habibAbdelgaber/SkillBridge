@@ -1,28 +1,14 @@
 import { cn } from "@/utils/cn";
 
 interface PaginationProps {
-  /** 1-indexed current page. */
   page: number;
   totalPages: number;
   onChange: (next: number) => void;
-  /** Hide the pager entirely when there is only one page. Defaults to true. */
   hideWhenSingle?: boolean;
-  /**
-   * How many neighbouring page numbers to show on each side of the current
-   * page. The first/last pages are always rendered, with ellipses inserted
-   * when the gap is non-trivial. Defaults to 1.
-   */
   siblingCount?: number;
   className?: string;
 }
 
-/**
- * Numbered pagination control.
- *
- * Renders Prev / 1 … N-1 N N+1 … Last / Next, with the active page styled
- * in the brand-primary fill. Uses a stable, deterministic page-number
- * sequence so the layout doesn't jump when `page` advances.
- */
 export function Pagination({
   page,
   totalPages,
@@ -100,7 +86,8 @@ function PageButton({ label, ariaLabel, active, disabled, onClick }: PageButtonP
         active
           ? "border-brand-primary bg-brand-primary text-white shadow-sm"
           : "border-brand-borderLight bg-white text-brand-logo hover:border-brand-primary hover:text-brand-primary",
-        disabled && "cursor-not-allowed opacity-40 hover:border-brand-borderLight hover:text-brand-logo",
+        disabled &&
+          "cursor-not-allowed opacity-40 hover:border-brand-borderLight hover:text-brand-logo",
       )}
     >
       {label}
@@ -110,13 +97,7 @@ function PageButton({ label, ariaLabel, active, disabled, onClick }: PageButtonP
 
 type PageEntry = number | "ellipsis";
 
-/**
- * Build the displayed page sequence.
- *
- * Always renders 1, the sibling window, and `totalPages`, with `"ellipsis"`
- * markers in the gaps. Keeps the rendered count stable so layout doesn't
- * shift as the user pages through.
- */
+/** Build a stable page sequence with ellipses in the gaps. */
 function buildPageSequence(
   current: number,
   total: number,

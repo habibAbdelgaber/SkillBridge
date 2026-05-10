@@ -1,4 +1,4 @@
-"""Shared abstract models used across SkillBridge apps."""
+"""Shared abstract models."""
 from __future__ import annotations
 
 import uuid
@@ -7,7 +7,7 @@ from django.db import models
 
 
 class TimeStampedModel(models.Model):
-    """Abstract base that adds self-updating `created_at` and `updated_at`."""
+    """Adds created and updated timestamps."""
 
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -18,7 +18,7 @@ class TimeStampedModel(models.Model):
 
 
 class UUIDModel(models.Model):
-    """Abstract base that uses an external-facing UUID primary key."""
+    """Uses a UUID primary key."""
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
 
@@ -27,7 +27,7 @@ class UUIDModel(models.Model):
 
 
 class BaseModel(UUIDModel, TimeStampedModel):
-    """Sensible default: UUID primary key + timestamps."""
+    """UUID primary key with timestamps."""
 
     class Meta(TimeStampedModel.Meta):
         abstract = True

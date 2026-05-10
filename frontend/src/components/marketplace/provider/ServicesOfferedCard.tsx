@@ -1,3 +1,5 @@
+import { Link, useLocation } from "react-router-dom";
+
 import type { ServiceListing } from "@/types/marketplace";
 import { cn } from "@/utils/cn";
 
@@ -12,13 +14,9 @@ function formatPrice(service: ServiceListing): string {
   return "—";
 }
 
-/**
- * "Services offered" list rendered as a simple two-column row layout:
- * title + subtitle on the left, price (accent color) on the right. The
- * provider context is already established in the hero, so we drop the
- * category pill and per-row rating that the marketplace card uses.
- */
 export function ServicesOfferedCard({ services, className }: ServicesOfferedCardProps) {
+  const location = useLocation();
+
   return (
     <section
       aria-labelledby="services-heading"
@@ -38,14 +36,36 @@ export function ServicesOfferedCard({ services, className }: ServicesOfferedCard
             className="flex items-start justify-between gap-4 py-4 first:pt-0 last:pb-0"
           >
             <div className="min-w-0">
-              <p className="truncate text-sm font-semibold text-brand-logo">
+              <Link
+                to={`/services/${service.id}/map`}
+                state={{ from: location.pathname, fromLabel: "Back to provider" }}
+                className="block truncate text-sm font-semibold text-brand-logo hover:text-brand-primary"
+              >
                 {service.title}
-              </p>
+              </Link>
               {service.subtitle && (
                 <p className="mt-0.5 truncate text-xs text-brand-muted">
                   {service.subtitle}
                 </p>
               )}
+              <Link
+                to={`/services/${service.id}/map`}
+                state={{ from: location.pathname, fromLabel: "Back to provider" }}
+                className="mt-1 inline-flex max-w-full items-center gap-1 text-xs text-brand-muted hover:text-brand-primary"
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth={1.75}
+                  className="h-3.5 w-3.5 shrink-0"
+                  aria-hidden="true"
+                >
+                  <path d="M12 21s-7-6.5-7-12a7 7 0 1 1 14 0c0 5.5-7 12-7 12z" />
+                  <circle cx="12" cy="9" r="2.5" />
+                </svg>
+                <span className="truncate">{formatServiceLocation(service)}</span>
+              </Link>
             </div>
             <span className="shrink-0 whitespace-nowrap text-sm font-semibold text-brand-primary">
               {formatPrice(service)}
@@ -54,5 +74,14 @@ export function ServicesOfferedCard({ services, className }: ServicesOfferedCard
         ))}
       </ul>
     </section>
+  );
+}
+
+function formatServiceLocation(service: ServiceListing): string {
+  return (
+    service.serviceLocationName ||
+    [service.serviceCity, service.serviceCountry].filter(Boolean).join(", ") ||
+    service.serviceArea ||
+    "View location"
   );
 }

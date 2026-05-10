@@ -9,7 +9,6 @@ interface StepBreadcrumbProps {
   steps: Step[];
 }
 
-/** Simple numbered step indicator shown at the top of the provider flow. */
 export function StepBreadcrumb({ steps }: StepBreadcrumbProps) {
   return (
     <ol className="flex items-center gap-3 text-xs font-medium">
@@ -37,7 +36,12 @@ export function StepBreadcrumb({ steps }: StepBreadcrumbProps) {
               )}
             >
               {step.state === "done" ? (
-                <svg className="h-3 w-3" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+                <svg
+                  className="h-3 w-3"
+                  viewBox="0 0 12 12"
+                  fill="none"
+                  aria-hidden="true"
+                >
                   <path
                     d="M2.5 6.3 5 8.8l4.5-5.3"
                     stroke="currentColor"

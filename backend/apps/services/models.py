@@ -1,24 +1,4 @@
-"""Marketplace catalog models.
-
-This app owns the public-facing service catalog. Authentication and the
-``ProviderProfile`` (1:1 with a provider ``User``) stay in
-``apps.users`` - this app only references those via foreign keys.
-
-Design notes
-------------
-- ``ServiceCategory`` is a flat lookup table managed by admins. Providers
-  pick from the active set; we never delete a category that's referenced
-  by a service (FK is ``PROTECT``) - admins deactivate instead.
-- ``Service.slug`` is unique *within a provider*, not globally. A hundred
-  providers can each own a "deep-cleaning" slug. Public retrieval is
-  therefore by primary key (UUID), not slug.
-- Soft-delete via ``is_active``: removing a service from public listings
-  while preserving booking history is the common path. Hard delete is
-  available to providers but should be rare.
-- ``Review`` lives here (not in its own app) because it only ever links a
-  service + the customer who used it. If the model grows into moderation
-  workflows or sentiment scoring, we'll graduate it to ``apps.reviews``.
-"""
+"""Marketplace catalog models."""
 from __future__ import annotations
 
 from decimal import Decimal
@@ -32,7 +12,7 @@ from apps.common.models import BaseModel
 
 
 class ServiceCategory(BaseModel):
-    """A flat top-level service taxonomy (e.g. Cleaning, Plumbing, Tutoring)."""
+    """Top-level service category."""
 
     name = models.CharField(_("name"), max_length=120, unique=True)
     slug = models.SlugField(_("slug"), max_length=140, unique=True)
@@ -59,7 +39,7 @@ class ServiceCategory(BaseModel):
 
 
 class Service(BaseModel):
-    """A single offering published by one provider, listed under one category."""
+    """A provider's public service listing."""
 
     class LocationType(models.TextChoices):
         REMOTE = "remote", _("Remote")
@@ -67,12 +47,6 @@ class Service(BaseModel):
         HYBRID = "hybrid", _("Hybrid")
 
     class PricingType(models.TextChoices):
-        """How ``price`` should be interpreted at render time.
-
-        ``HOURLY`` services display "From $X/hr" and are charged per hour;
-        ``FLAT`` services display "$X flat" and bill once per booking.
-        """
-
         HOURLY = "hourly", _("Per hour")
         FLAT = "flat", _("Flat rate")
 
@@ -124,6 +98,52 @@ class Service(BaseModel):
         choices=LocationType.choices,
         default=LocationType.ONSITE,
     )
+    service_location_name = models.CharField(
+        _("service location name"),
+        max_length=180,
+        blank=True,
+        help_text=_("Optional display name for the service location."),
+    )
+    service_address = models.CharField(
+        _("service address"),
+        max_length=255,
+        blank=True,
+        help_text=_("Street address used for map display and geocoding."),
+    )
+    service_city = models.CharField(
+        _("service city"),
+        max_length=120,
+        blank=True,
+    )
+    service_country = models.CharField(
+        _("service country"),
+        max_length=120,
+        blank=True,
+    )
+    latitude = models.DecimalField(
+        _("latitude"),
+        max_digits=9,
+        decimal_places=6,
+        null=True,
+        blank=True,
+        validators=(
+            MinValueValidator(Decimal("-90.000000")),
+            MaxValueValidator(Decimal("90.000000")),
+        ),
+        help_text=_("Latitude coordinate for map display."),
+    )
+    longitude = models.DecimalField(
+        _("longitude"),
+        max_digits=9,
+        decimal_places=6,
+        null=True,
+        blank=True,
+        validators=(
+            MinValueValidator(Decimal("-180.000000")),
+            MaxValueValidator(Decimal("180.000000")),
+        ),
+        help_text=_("Longitude coordinate for map display."),
+    )
     hero_image_url = models.URLField(
         _("hero image URL"),
         max_length=500,
@@ -143,8 +163,6 @@ class Service(BaseModel):
             "rank ahead of peers in the default sort."
         ),
     )
-
-    # ---- Denormalized rating aggregate -----------------------------------
 
     rating_average = models.DecimalField(
         _("rating average"),
@@ -186,13 +204,7 @@ class Service(BaseModel):
 
 
 class Review(BaseModel):
-    """Customer review of a completed service.
-
-    A review always links to a service (which itself links to a provider),
-    so we don't store a redundant ``provider`` FK - aggregates fan out
-    via ``service.provider``. The reviewer FK uses ``SET_NULL`` so account
-    deletion doesn't cascade-erase historical reviews.
-    """
+    """Customer review for a service."""
 
     service = models.ForeignKey(
         "services.Service",
@@ -234,3 +246,21 @@ class Review(BaseModel):
 
     def __str__(self) -> str:
         return f"{self.rating}★ for {self.service.title}"
+
+    def clean(self) -> None:
+        """Providers cannot review their own services."""
+        super().clean()
+        if (
+            self.reviewer_id
+            and self.service_id
+            and self.service.provider.user_id == self.reviewer_id
+        ):
+            from django.core.exceptions import ValidationError
+
+            raise ValidationError(
+                {
+                    "reviewer": (
+                        "Providers cannot review their own services."
+                    ),
+                },
+            )

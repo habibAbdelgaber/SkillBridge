@@ -1,14 +1,6 @@
-/**
- * Pure transforms between the Django REST shapes and the marketplace
- * domain types the SPA renders against.
- *
- * Kept in a dedicated module so:
- *   - the service layer stays thin (just HTTP plus ``mapX(...)``)
- *   - mappers are independently unit-testable
- *   - tweaking one nested shape (e.g. switching ``service_area`` to a
- *     structured ``{city, region}``) lands here, not at the call sites.
- */
+/** Maps Django REST payloads into marketplace UI types. */
 import type {
+  AvailabilityDay,
   AvailabilityWindow,
   Category,
   ProviderDetail,
@@ -19,10 +11,6 @@ import type {
   ServiceLocationType,
   VerificationFlag,
 } from "@/types/marketplace";
-
-// ---------------------------------------------------------------------------
-// Backend payload shapes (mirror DRF serializers, not exported)
-// ---------------------------------------------------------------------------
 
 interface ApiCategory {
   id: string;
@@ -66,6 +54,12 @@ interface ApiServiceMini {
   pricing_type: "hourly" | "flat";
   duration_minutes: number;
   location_type: ServiceLocationType;
+  service_location_name?: string;
+  service_address?: string;
+  service_city?: string;
+  service_country?: string;
+  latitude?: string | number | null;
+  longitude?: string | number | null;
   hero_image_url: string;
   is_featured: boolean;
   rating: ApiRating;
@@ -86,12 +80,23 @@ interface ApiReview {
   created_at: string;
 }
 
+interface ApiAvailabilitySlot {
+  start_time: string;
+  end_time: string;
+}
+
+interface ApiAvailabilityDay {
+  date: string;
+  weekday: number;
+  slots: ApiAvailabilitySlot[];
+}
+
 export interface ApiProviderDetail extends ApiProviderSummary {
   services_offered: ApiServiceMini[];
   reviews: ApiReview[];
+  availability?: ApiAvailabilityDay[];
 }
 
-/** DRF PageNumberPagination response shape. */
 export interface ApiPaginated<T> {
   count: number;
   next: string | null;
@@ -99,22 +104,13 @@ export interface ApiPaginated<T> {
   results: T[];
 }
 
-// ---------------------------------------------------------------------------
-// Public mappers
-// ---------------------------------------------------------------------------
-
 export function mapCategory(api: ApiCategory): Category {
   return { slug: api.slug, label: api.name };
 }
 
 function initialsFor(name: string): string {
-  // Two-letter monogram fallback used by the avatar tile when no image
-  // upload has happened yet. Falls back to "?" rather than an empty
-  // string so the markup never collapses.
-  const parts = name
-    .trim()
-    .split(/\s+/u)
-    .filter(Boolean);
+  // Keep avatar placeholders visible when no image exists.
+  const parts = name.trim().split(/\s+/u).filter(Boolean);
   if (parts.length === 0) return "?";
   if (parts.length === 1) return parts[0]!.slice(0, 2).toUpperCase();
   return (parts[0]![0]! + parts[parts.length - 1]![0]!).toUpperCase();
@@ -145,14 +141,15 @@ export function mapProviderSummary(api: ApiProviderSummary): ProviderSummary {
 }
 
 interface ServiceMapContext {
-  /** Provider ID for the parent resource — used when the service payload
-   *  doesn't embed the full provider card (e.g. nested in detail). */
   providerId: string;
   providerName: string;
   serviceArea: string;
 }
 
-function priceParts(api: { price: string; pricing_type: ApiServiceMini["pricing_type"] }): {
+function priceParts(api: {
+  price: string;
+  pricing_type: ApiServiceMini["pricing_type"];
+}): {
   pricePerHour?: number;
   flatPrice?: number;
 } {
@@ -161,6 +158,33 @@ function priceParts(api: { price: string; pricing_type: ApiServiceMini["pricing_
   return api.pricing_type === "hourly"
     ? { pricePerHour: Math.round(parsed) }
     : { flatPrice: Math.round(parsed) };
+}
+
+function coordinate(value: string | number | null | undefined): number | undefined {
+  if (value == null || value === "") return undefined;
+  const parsed = typeof value === "number" ? value : Number.parseFloat(value);
+  return Number.isFinite(parsed) ? parsed : undefined;
+}
+
+function locationParts(
+  api: ApiServiceMini,
+): Pick<
+  ServiceListing,
+  | "serviceLocationName"
+  | "serviceAddress"
+  | "serviceCity"
+  | "serviceCountry"
+  | "latitude"
+  | "longitude"
+> {
+  return {
+    serviceLocationName: api.service_location_name || undefined,
+    serviceAddress: api.service_address || undefined,
+    serviceCity: api.service_city || undefined,
+    serviceCountry: api.service_country || undefined,
+    latitude: coordinate(api.latitude),
+    longitude: coordinate(api.longitude),
+  };
 }
 
 export function mapServicePublic(api: ApiServicePublic): ServiceListing {
@@ -174,12 +198,13 @@ export function mapServicePublic(api: ApiServicePublic): ServiceListing {
     ...priceParts(api),
     rating: mapRating(api.rating),
     locationType: api.location_type,
+    ...locationParts(api),
     serviceArea: api.provider.service_area,
     imageUrl: api.hero_image_url || undefined,
     isFeatured: api.is_featured,
-    // Backend doesn't expose service-level availability windows yet;
-    // returning an empty array keeps the type honest.
+    // Service-level availability is not exposed yet.
     availability: [] as AvailabilityWindow[],
+    durationMinutes: api.duration_minutes,
   };
 }
 
@@ -197,14 +222,14 @@ export function mapServiceMini(
     ...priceParts(api),
     rating: mapRating(api.rating),
     locationType: api.location_type,
+    ...locationParts(api),
     serviceArea: ctx.serviceArea,
     imageUrl: api.hero_image_url || undefined,
     isFeatured: api.is_featured,
     availability: [] as AvailabilityWindow[],
+    durationMinutes: api.duration_minutes,
   };
 }
-
-// ---- Reviews --------------------------------------------------------------
 
 const SECOND = 1000;
 const MINUTE = 60 * SECOND;
@@ -214,12 +239,7 @@ const WEEK = 7 * DAY;
 const MONTH = 30 * DAY;
 const YEAR = 365 * DAY;
 
-/**
- * Compact "X days ago" formatter used in the reviews card.
- *
- * Avoids pulling a full date library in for one cell of one card; if more
- * places start needing this, lift it to ``utils/date.ts``.
- */
+/** Compact "X days ago" formatter used in reviews. */
 function formatPostedAgo(iso: string, now: Date = new Date()): string {
   const ts = Date.parse(iso);
   if (Number.isNaN(ts)) return "";
@@ -259,8 +279,6 @@ export function mapReview(api: ApiReview): Review {
   };
 }
 
-// ---- Provider detail composite -------------------------------------------
-
 export function mapProviderDetail(api: ApiProviderDetail): ProviderDetail {
   const summary = mapProviderSummary(api);
   return {
@@ -274,8 +292,60 @@ export function mapProviderDetail(api: ApiProviderDetail): ProviderDetail {
       }),
     ),
     reviews: (api.reviews ?? []).map(mapReview),
-    // Availability is not yet exposed by the backend. The UI renders the
-    // empty state ("No upcoming availability") until it ships.
-    availability: [],
+    // Keep the picker stable even when the backend omits availability.
+    availability:
+      api.availability && api.availability.length > 0
+        ? api.availability.map(mapAvailabilityDay)
+        : synthesizeEmptyWeek(),
   };
+}
+
+const WEEKDAY_SHORT: readonly string[] = [
+  "Mon",
+  "Tue",
+  "Wed",
+  "Thu",
+  "Fri",
+  "Sat",
+  "Sun",
+];
+
+function mapAvailabilityDay(api: ApiAvailabilityDay): AvailabilityDay {
+  // Local noon avoids date labels drifting across timezones.
+  const [year, month, day] = api.date.split("-").map(Number);
+  const local = new Date(year ?? 1970, (month ?? 1) - 1, day ?? 1, 12, 0, 0);
+  const weekdayShort =
+    WEEKDAY_SHORT[api.weekday] ??
+    local.toLocaleDateString(undefined, { weekday: "short" });
+  return {
+    date: api.date,
+    weekdayShort,
+    dayOfMonth: String(local.getDate()),
+    slots: (api.slots ?? []).map((slot) => formatSlotStart(slot.start_time)),
+  };
+}
+
+/** Reduce a slot to the "HH:MM" label shown in the picker. */
+function formatSlotStart(rawStart: string): string {
+  // Normalize defensively in case a future serializer includes seconds.
+  const [hh, mm] = rawStart.split(":");
+  return `${(hh ?? "00").padStart(2, "0")}:${(mm ?? "00").padStart(2, "0")}`;
+}
+
+function synthesizeEmptyWeek(today: Date = new Date()): AvailabilityDay[] {
+  // Empty slots keep the date strip visible but disabled.
+  const out: AvailabilityDay[] = [];
+  for (let i = 0; i < 7; i += 1) {
+    const d = new Date(today.getFullYear(), today.getMonth(), today.getDate() + i, 12);
+    const isoDate = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    // Map JS getDay onto Python's date.weekday.
+    const pyWeekday = (d.getDay() + 6) % 7;
+    out.push({
+      date: isoDate,
+      weekdayShort: WEEKDAY_SHORT[pyWeekday] ?? "—",
+      dayOfMonth: String(d.getDate()),
+      slots: [],
+    });
+  }
+  return out;
 }

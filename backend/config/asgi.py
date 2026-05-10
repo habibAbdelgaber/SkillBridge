@@ -1,8 +1,4 @@
-"""ASGI config for the SkillBridge project.
-
-Production-oriented default: ASGI servers (uvicorn, daphne) pick the
-prod settings unless DJANGO_SETTINGS_MODULE is explicitly set.
-"""
+"""ASGI entrypoint."""
 import os
 
 from django.core.asgi import get_asgi_application

@@ -1,4 +1,4 @@
-"""Serializers for authentication and user/provider onboarding."""
+"""Authentication and onboarding serializers."""
 from __future__ import annotations
 
 from typing import Any
@@ -12,17 +12,8 @@ from rest_framework import serializers
 from apps.users.forms import FrontendPasswordResetForm
 from apps.users.models import ProviderProfile, User
 
-# ---------------------------------------------------------------------------
-# User / provider read serializers
-# ---------------------------------------------------------------------------
-
-
 class ProviderProfileSerializer(serializers.ModelSerializer):
-    """Self-service representation: the provider editing their own profile.
-
-    Exposes KYC-sensitive fields (``tax_id``, ``license_or_certification_number``,
-    ``insurance_provider``) because the owner is the only consumer.
-    """
+    """Provider profile payload for the owner."""
 
     class Meta:
         model = ProviderProfile
@@ -46,17 +37,7 @@ class ProviderProfileSerializer(serializers.ModelSerializer):
 
 
 class PublicProviderProfileSerializer(serializers.ModelSerializer):
-    """Marketplace-facing provider card.
-
-    KYC fields (tax ID, license number, insurance provider) are deliberately
-    omitted; ``is_verified`` is exposed as a trust signal but the underlying
-    documentation never leaves the admin surface.
-
-    The ``rating`` and ``verifications`` shape mirrors the SPA's
-    ``ProviderSummary`` type so the client renders without remapping.
-    Aggregates are denormalized on ``ProviderProfile`` and refreshed when
-    reviews / bookings change.
-    """
+    """Public provider card payload."""
 
     user_id = serializers.UUIDField(source="user.id", read_only=True)
     full_name = serializers.SerializerMethodField()
@@ -89,7 +70,6 @@ class PublicProviderProfileSerializer(serializers.ModelSerializer):
         return obj.user.get_full_name()
 
     def get_rating(self, obj: ProviderProfile) -> dict:
-        # Cast to float so JSON consumers don't need to handle Decimal.
         return {
             "average": float(obj.rating_average),
             "count": obj.rating_count,
@@ -100,7 +80,7 @@ class PublicProviderProfileSerializer(serializers.ModelSerializer):
 
 
 class UserSerializer(serializers.ModelSerializer):
-    """Serializer returned by ``GET /auth/user/`` and embedded in login responses."""
+    """Current user payload."""
 
     provider_profile = ProviderProfileSerializer(read_only=True)
 
@@ -126,25 +106,47 @@ class UserSerializer(serializers.ModelSerializer):
         )
 
 
-# ---------------------------------------------------------------------------
-# Registration serializers
-# ---------------------------------------------------------------------------
+def _normalise_personal_name(value: str) -> str:
+    """Trim whitespace and title-case a personal name."""
+    if not value:
+        return value
+    cleaned = " ".join(value.split())
+    out_words: list[str] = []
+    for word in cleaned.split(" "):
+        # ``str.title()`` mishandles names with apostrophes.
+        segments = []
+        buffer = ""
+        for char in word:
+            if char in ("-", "'"):
+                segments.append(buffer)
+                segments.append(char)
+                buffer = ""
+            else:
+                buffer += char
+        segments.append(buffer)
+        out_words.append(
+            "".join(
+                seg if seg in ("-", "'") else (seg[:1].upper() + seg[1:].lower())
+                for seg in segments
+            )
+        )
+    return " ".join(out_words)
 
 
 class BaseRegisterSerializer(RegisterSerializer):
-    """Shared base for role-specific registration serializers.
-
-    Drops the inherited ``username`` field (our user model uses email as
-    the unique identifier) and threads ``first_name`` / ``last_name``
-    through to the allauth adapter's ``save_user`` call.
-    """
+    """Shared base for role-specific registration."""
 
     username = None
     first_name = serializers.CharField(required=False, allow_blank=True, max_length=150)
     last_name = serializers.CharField(required=False, allow_blank=True, max_length=150)
 
-    #: Subclasses override to stamp the role on newly-created users.
     role: str = User.Role.CUSTOMER
+
+    def validate_first_name(self, value: str) -> str:
+        return _normalise_personal_name(value)
+
+    def validate_last_name(self, value: str) -> str:
+        return _normalise_personal_name(value)
 
     def get_cleaned_data(self) -> dict[str, Any]:
         data = super().get_cleaned_data()
@@ -171,17 +173,16 @@ class BaseRegisterSerializer(RegisterSerializer):
 
 
 class CustomerRegisterSerializer(BaseRegisterSerializer):
-    """Customer signup: email + password + optional personal name."""
+    """Customer signup payload."""
 
     role = User.Role.CUSTOMER
 
 
 class ProviderRegisterSerializer(BaseRegisterSerializer):
-    """Provider signup: customer fields plus business onboarding details."""
+    """Provider signup payload."""
 
     role = User.Role.PROVIDER
 
-    # Provider-specific fields. Validation rules mirror ProviderProfile.
     business_name = serializers.CharField(max_length=255)
     business_type = serializers.ChoiceField(choices=ProviderProfile.BusinessType.choices)
     tax_id = serializers.CharField(max_length=64, required=False, allow_blank=True)
@@ -232,28 +233,8 @@ class ProviderRegisterSerializer(BaseRegisterSerializer):
         return user
 
 
-# ---------------------------------------------------------------------------
-# Password reset - rewrite reset link to point at the frontend SPA route.
-# ---------------------------------------------------------------------------
-
-
 class FrontendPasswordResetSerializer(BasePasswordResetSerializer):
-    """Direct password-reset emails at the frontend's confirm page.
-
-    Two pieces work together:
-
-    1. ``password_reset_form_class`` - a subclass of Django's
-       ``PasswordResetForm`` that does NOT call ``reverse('password_reset_confirm')``.
-       The SPA owns the confirm step, so that URL name is intentionally absent
-       from this project's URL conf. The form builds the SPA URL itself.
-
-    2. ``get_email_options`` - surfaces ``frontend_url`` to the email template
-       in case the (HTML) template wants to use brand colors keyed off the host.
-
-    The frontend receives ``uid`` and ``token`` as URL params on
-    ``/reset-password/:uid/:token`` and POSTs them back to
-    ``/api/v1/auth/password/reset/confirm/``.
-    """
+    """Send password-reset users to the frontend confirm page."""
 
     @property
     def password_reset_form_class(self):  # type: ignore[override]

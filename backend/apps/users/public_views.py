@@ -1,9 +1,4 @@
-"""Public, marketplace-facing read views for provider profiles.
-
-Kept separate from ``views.py`` (which is auth/registration heavy) so the
-boundary between "identity + onboarding" and "browse the directory" stays
-clear in the URL conf.
-"""
+"""Public provider profile views."""
 from __future__ import annotations
 
 from rest_framework import filters, mixins, permissions, viewsets
@@ -17,19 +12,7 @@ class PublicProviderViewSet(
     mixins.RetrieveModelMixin,
     viewsets.GenericViewSet,
 ):
-    """Read-only browse of provider profiles for the public marketplace.
-
-    - Always public (``AllowAny``); inbound auth headers are ignored so a
-      stale JWT in the SPA doesn't 401 a browse request.
-    - Restricted to active provider users to avoid surfacing soft-deleted
-      accounts; ``is_verified`` is exposed as a trust badge but is *not*
-      a filter (unverified providers should still be discoverable).
-    - Search across business name, headline, and service category for the
-      listing page; ordering by ``business_name`` for deterministic
-      pagination.
-    - The retrieve action upgrades to ``PublicProviderDetailSerializer``
-      so the profile page receives services + reviews in one round-trip.
-    """
+    """Read-only provider browse for the marketplace."""
 
     permission_classes = (permissions.AllowAny,)
     authentication_classes: tuple = ()
@@ -55,8 +38,7 @@ class PublicProviderViewSet(
     )
 
     def get_serializer_class(self):
-        # Local import keeps the users app from importing services at module
-        # load time (services already imports users.serializers).
+        # Avoid importing services serializers while this module loads.
         if self.action == "retrieve":
             from apps.services.serializers import PublicProviderDetailSerializer
 

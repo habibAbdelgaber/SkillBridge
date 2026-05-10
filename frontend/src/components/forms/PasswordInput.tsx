@@ -2,15 +2,13 @@ import { forwardRef, useState, type InputHTMLAttributes } from "react";
 
 import { cn } from "@/utils/cn";
 
-interface PasswordInputProps
-  extends Omit<InputHTMLAttributes<HTMLInputElement>, "type"> {
+interface PasswordInputProps extends Omit<
+  InputHTMLAttributes<HTMLInputElement>,
+  "type"
+> {
   hasError?: boolean;
 }
 
-/**
- * Password input with a show/hide toggle. Uses a single internal state
- * to switch the input type between `password` and `text`.
- */
 export const PasswordInput = forwardRef<HTMLInputElement, PasswordInputProps>(
   function PasswordInput({ className, hasError, ...props }, ref) {
     const [visible, setVisible] = useState(false);

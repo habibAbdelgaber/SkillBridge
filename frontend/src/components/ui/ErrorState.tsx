@@ -3,18 +3,10 @@ import { cn } from "@/utils/cn";
 interface ErrorStateProps {
   title?: string;
   description?: string;
-  /** Optional retry handler; renders a button when provided. */
   onRetry?: () => void;
   className?: string;
 }
 
-/**
- * Recoverable-error UI for marketplace data fetches.
- *
- * Treated as a soft failure surface — the user can retry, switch tabs,
- * or change filters without leaving the page. Hard 5xx errors handled by
- * the global Axios interceptor still apply.
- */
 export function ErrorState({
   title = "Something went wrong",
   description = "We couldn't load this view. Check your connection and try again.",

@@ -5,17 +5,11 @@ import { cn } from "@/utils/cn";
 
 export interface BreadcrumbItem {
   label: string;
-  /** When present, the item renders as a link; otherwise as the active leaf. */
   to?: string;
 }
 
 interface BreadcrumbProps {
   items: BreadcrumbItem[];
-  /**
-   * Visual treatment.
-   * - `default` — dark text on a light page (the marketplace surface, etc.).
-   * - `light`   — light text for use on a dark / gradient hero band.
-   */
   tone?: "default" | "light";
   className?: string;
 }
@@ -42,14 +36,6 @@ const TONE_STYLES: Record<NonNullable<BreadcrumbProps["tone"]>, ToneStyle> = {
   },
 };
 
-/**
- * Lightweight breadcrumb trail.
- *
- * Marks the last item as `aria-current="page"` so screen readers and
- * style sheets can identify the active leaf without extra props. Pass
- * `tone="light"` when rendering on the navy gradient hero band so the
- * trail stays legible without overriding individual classes.
- */
 export function Breadcrumb({ items, tone = "default", className }: BreadcrumbProps) {
   if (items.length === 0) return null;
 

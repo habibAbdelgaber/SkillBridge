@@ -1,14 +1,9 @@
 import { useEffect } from "react";
 
 import { AppRouter } from "@/app/router";
+import { AuthModal } from "@/components/auth/AuthModal";
 import { useAuthStore } from "@/store/authStore";
 
-/**
- * Root component.
- *
- * Hydrates the auth session once on mount (so a refresh of any URL re-validates
- * the persisted tokens against the API) and then hands off to the router.
- */
 export function App() {
   const hydrate = useAuthStore((s) => s.hydrate);
 
@@ -16,7 +11,12 @@ export function App() {
     void hydrate();
   }, [hydrate]);
 
-  return <AppRouter />;
+  return (
+    <>
+      <AppRouter />
+      <AuthModal />
+    </>
+  );
 }
 
 export default App;

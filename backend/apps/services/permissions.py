@@ -1,4 +1,4 @@
-"""Permission classes for the services app."""
+"""Service permissions."""
 from __future__ import annotations
 
 from rest_framework import permissions
@@ -7,12 +7,7 @@ from apps.users.models import User
 
 
 class IsProvider(permissions.BasePermission):
-    """User must be authenticated and have role=PROVIDER with a profile.
-
-    The presence of a ``ProviderProfile`` is checked on top of the role
-    so half-onboarded users (signed up as a customer, role flipped later
-    by an admin) can't sidestep the onboarding form.
-    """
+    """Provider actions require a completed provider profile."""
 
     message = "You must complete provider onboarding before performing this action."
 
@@ -26,7 +21,7 @@ class IsProvider(permissions.BasePermission):
 
 
 class IsServiceOwner(permissions.BasePermission):
-    """Object-level: the service must belong to the requester's provider profile."""
+    """The service must belong to the requester's provider profile."""
 
     message = "You can only modify services that belong to your provider profile."
 
@@ -38,7 +33,7 @@ class IsServiceOwner(permissions.BasePermission):
 
 
 class IsAdminOrReadOnly(permissions.BasePermission):
-    """Read for everyone; write only for staff (admins). Used for ServiceCategory."""
+    """Anyone can read; only staff can write."""
 
     def has_permission(self, request, view) -> bool:
         if request.method in permissions.SAFE_METHODS:

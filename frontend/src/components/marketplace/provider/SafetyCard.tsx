@@ -40,10 +40,7 @@ export function SafetyCard({ verifications, className }: SafetyCardProps) {
   return (
     <section
       aria-labelledby="safety-heading"
-      className={cn(
-        "rounded-2xl border border-sky-100 bg-sky-50/60 p-6",
-        className,
-      )}
+      className={cn("rounded-2xl border border-sky-100 bg-sky-50/60 p-6", className)}
     >
       <h2 id="safety-heading" className="text-base font-semibold text-brand-logo">
         Safety & trust
@@ -60,7 +57,11 @@ export function SafetyCard({ verifications, className }: SafetyCardProps) {
               className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600"
               aria-hidden="true"
             >
-              <path d="M5 12.5l4 4 10-10" strokeLinecap="round" strokeLinejoin="round" />
+              <path
+                d="M5 12.5l4 4 10-10"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
             </svg>
             <span>{item.label}</span>
           </li>

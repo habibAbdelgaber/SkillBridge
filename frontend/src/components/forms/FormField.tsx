@@ -12,10 +12,6 @@ interface FormFieldProps {
   children: ReactNode;
 }
 
-/**
- * Label + optional tag + hint + error wrapper used by every auth input.
- * Keeps the vertical rhythm and error styling consistent across forms.
- */
 export function FormField({
   label,
   htmlFor,

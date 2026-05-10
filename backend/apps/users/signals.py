@@ -1,9 +1,4 @@
-"""Signal receivers for the users app.
-
-Centralizes cross-cutting side-effects on the ``User`` lifecycle so the
-domain models stay lean and the behavior is uniform regardless of how a
-user is created (management command, admin UI, DRF register, shell).
-"""
+"""User signal receivers."""
 from __future__ import annotations
 
 import logging
@@ -20,18 +15,7 @@ logger = logging.getLogger(__name__)
 
 @receiver(post_save, sender=User, dispatch_uid="users.auto_verify_superuser_email")
 def auto_verify_superuser_email(sender, instance: User, created: bool, **kwargs) -> None:
-    """Auto-verify the email on any newly-created superuser.
-
-    ``django-allauth`` tracks verification state in ``EmailAddress`` — a row
-    that the signup flow normally creates. Superusers minted outside that
-    flow (``createsuperuser``, a custom management command, programmatic
-    creation in tests, etc.) have no ``EmailAddress`` row, so they cannot
-    authenticate when ``ACCOUNT_EMAIL_VERIFICATION='mandatory'``.
-
-    This receiver bridges that gap exactly once, when the user is first
-    created, by upserting a verified + primary ``EmailAddress``. Subsequent
-    saves (password changes, profile edits) are no-ops.
-    """
+    """Verify superusers created outside allauth's signup flow."""
     if not created or not instance.is_superuser:
         return
 
@@ -43,10 +27,7 @@ def auto_verify_superuser_email(sender, instance: User, created: bool, **kwargs)
         )
         return
 
-    # Run inside a transaction so a failure here doesn't leave a half-populated
-    # EmailAddress table behind, and on_commit defers the write until the
-    # outer User.save() transaction is durable — important when this signal
-    # fires from inside ``transaction.atomic`` blocks (e.g. test fixtures).
+    # Wait for the outer user save before writing the allauth email row.
     def _ensure_verified_email_address() -> None:
         email_address, was_created = EmailAddress.objects.get_or_create(
             user=instance,

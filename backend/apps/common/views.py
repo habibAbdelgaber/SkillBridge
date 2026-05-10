@@ -18,12 +18,7 @@ from rest_framework.response import Response
 @authentication_classes([])  # probe must ignore stale/invalid tokens.
 @permission_classes([AllowAny])
 def health_check(_: Request) -> Response:
-    """Lightweight liveness/readiness probe.
-
-    Returns the service status and a database-reachability flag so that
-    container orchestrators and uptime monitors can distinguish a live
-    process from one that cannot reach its dependencies.
-    """
+    """Liveness probe with a database check."""
     try:
         with connection.cursor() as cursor:
             cursor.execute("SELECT 1")

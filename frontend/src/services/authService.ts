@@ -8,14 +8,6 @@ import type {
   RegisterResponse,
 } from "@/types/auth";
 
-/**
- * Auth API layer.
- *
- * Thin wrappers around the Django `/api/v1/auth/*` endpoints. Each function
- * returns the concrete response shape (never `any`) so page-level code can
- * rely on the types. Errors are allowed to propagate as AxiosError; callers
- * pass them through `parseApiError` to render them.
- */
 const BASE = "/api/v1/auth";
 
 export const authService = {
@@ -24,9 +16,7 @@ export const authService = {
     return data;
   },
 
-  async registerCustomer(
-    payload: CustomerRegisterPayload,
-  ): Promise<RegisterResponse> {
+  async registerCustomer(payload: CustomerRegisterPayload): Promise<RegisterResponse> {
     const { data } = await apiClient.post<RegisterResponse>(
       `${BASE}/register/`,
       payload,
@@ -34,9 +24,7 @@ export const authService = {
     return data;
   },
 
-  async registerProvider(
-    payload: ProviderRegisterPayload,
-  ): Promise<RegisterResponse> {
+  async registerProvider(payload: ProviderRegisterPayload): Promise<RegisterResponse> {
     const { data } = await apiClient.post<RegisterResponse>(
       `${BASE}/register/provider/`,
       payload,

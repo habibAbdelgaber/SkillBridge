@@ -5,9 +5,7 @@ import { cn } from "@/utils/cn";
 interface EmptyStateProps {
   title: string;
   description?: string;
-  /** Optional action button or link rendered below the description. */
   action?: ReactNode;
-  /** Optional icon override; defaults to a magnifier glyph. */
   icon?: ReactNode;
   className?: string;
 }
@@ -28,15 +26,13 @@ function DefaultIcon() {
   );
 }
 
-/**
- * Friendly zero-result state.
- *
- * Used by both the marketplace ("no providers match these filters") and
- * the provider profile ("no reviews yet"). Centralized so the IA stays
- * consistent and the next iteration of the visual language has a single
- * file to update.
- */
-export function EmptyState({ title, description, action, icon, className }: EmptyStateProps) {
+export function EmptyState({
+  title,
+  description,
+  action,
+  icon,
+  className,
+}: EmptyStateProps) {
   return (
     <div
       role="status"

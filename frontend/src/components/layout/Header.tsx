@@ -1,12 +1,20 @@
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 
 import { Logo } from "@/components/ui/Logo";
 import { selectIsAuthenticated, useAuthStore } from "@/store/authStore";
+import { useUIStore } from "@/store/uiStore";
 
 export function Header() {
+  const navigate = useNavigate();
   const isAuthenticated = useAuthStore(selectIsAuthenticated);
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
+  const openAuthModal = useUIStore((s) => s.openAuthModal);
+
+  async function handleLogout() {
+    await logout();
+    navigate("/", { replace: true });
+  }
 
   return (
     <header className="relative overflow-hidden border-b border-brand-borderLight bg-white/80 backdrop-blur">
@@ -44,37 +52,38 @@ export function Header() {
 
           {isAuthenticated ? (
             <div className="flex items-center gap-3">
-              <span className="text-xs text-brand-muted">
-                {user?.email}
+              <Link
+                to={
+                  user?.role === "provider"
+                    ? "/dashboard/provider"
+                    : "/dashboard/customer"
+                }
+                title="Open my dashboard"
+                className="flex items-center gap-1.5 rounded-full px-2 py-1 text-xs text-brand-muted transition-colors hover:bg-brand-surface/70 hover:text-brand-logo"
+              >
+                <span className="font-medium text-brand-logo">{user?.email}</span>
                 {user?.role && (
-                  <span className="ml-1 rounded-full bg-brand-surface px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-brand-primary">
+                  <span className="rounded-full bg-brand-surface px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-brand-primary">
                     {user.role}
                   </span>
                 )}
-              </span>
+              </Link>
               <button
                 type="button"
-                onClick={() => void logout()}
-                className="rounded-md border border-brand-borderLight px-3 py-1.5 text-xs font-semibold text-brand-logo hover:border-brand-borderStrong hover:text-brand-primary"
+                onClick={() => void handleLogout()}
+                className="rounded-full bg-brand-surface/70 px-3 py-1.5 text-xs font-semibold text-brand-logo transition-colors duration-150 hover:bg-red-400 hover:text-white"
               >
                 Sign out
               </button>
             </div>
           ) : (
-            <div className="flex items-center gap-2">
-              <Link
-                to="/login"
-                className="rounded-md px-3 py-1.5 text-xs font-semibold text-brand-logo hover:text-brand-primary"
-              >
-                Sign in
-              </Link>
-              <Link
-                to="/register"
-                className="rounded-md bg-brand-primary px-3 py-1.5 text-xs font-semibold text-white hover:bg-brand-primaryHover hover:text-white"
-              >
-                Create account
-              </Link>
-            </div>
+            <button
+              type="button"
+              onClick={() => openAuthModal("login")}
+              className="rounded-md bg-brand-primary px-3 py-1.5 text-xs font-semibold text-white hover:bg-brand-primaryHover hover:text-white"
+            >
+              Sign in
+            </button>
           )}
         </nav>
       </div>

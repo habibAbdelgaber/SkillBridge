@@ -1,8 +1,3 @@
-/**
- * Types that mirror the SkillBridge Django auth API responses and payloads.
- * Keep these aligned with `backend/apps/users/serializers.py`.
- */
-
 export type UserRole = "customer" | "provider" | "admin";
 
 export type BusinessType =
@@ -51,8 +46,6 @@ export interface AuthSession {
   user: AuthUser;
 }
 
-// ---- Request payloads -----------------------------------------------------
-
 export interface LoginPayload {
   email: string;
   password: string;
@@ -79,22 +72,15 @@ export interface ProviderRegisterPayload extends CustomerRegisterPayload {
   insurance_provider?: string;
 }
 
-// ---- Response shapes ------------------------------------------------------
-
+/** dj-rest-auth JWT response: {access, refresh, user}. */
 export interface LoginResponse {
-  access_token: string;
-  refresh_token: string;
+  access: string;
+  refresh: string;
   user: AuthUser;
 }
 
-/** Register returns a token pair when email verification is disabled, or
- *  `{detail: "Verification e-mail sent."}` when verification is mandatory. */
-export type RegisterResponse =
-  | LoginResponse
-  | { detail: string };
+export type RegisterResponse = LoginResponse | { detail: string };
 
-export function isLoginResponse(
-  response: RegisterResponse,
-): response is LoginResponse {
-  return (response as LoginResponse).access_token !== undefined;
+export function isLoginResponse(response: RegisterResponse): response is LoginResponse {
+  return typeof (response as LoginResponse).access === "string";
 }

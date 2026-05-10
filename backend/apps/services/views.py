@@ -1,19 +1,4 @@
-"""Viewsets for ServiceCategory and Service.
-
-Three viewsets, one per concern:
-
-- ``ServiceCategoryViewSet``    -> ``/categories/`` (read for everyone,
-                                    write for staff)
-- ``PublicServiceViewSet``      -> ``/services/`` (read-only, only active
-                                    services from active providers)
-- ``MyServicesViewSet``         -> ``/me/services/`` (full CRUD scoped to
-                                    the requester's own provider profile)
-
-Splitting public read from owner write keeps each surface focused: the
-public viewset can pre-filter aggressively without complicating owner
-lookups, and the owner viewset can expose ``is_active`` toggles without
-those leaking into the public serializer.
-"""
+"""Marketplace catalog viewsets."""
 from __future__ import annotations
 
 from rest_framework import filters, mixins, permissions, viewsets
@@ -33,19 +18,8 @@ from apps.services.serializers import (
 )
 
 
-# ---------------------------------------------------------------------------
-# Categories
-# ---------------------------------------------------------------------------
-
-
 class ServiceCategoryViewSet(viewsets.ModelViewSet):
-    """Public read; staff-only writes.
-
-    A single ModelViewSet keeps the surface minimal but the permission class
-    enforces the read/write asymmetry. We swap the serializer based on the
-    action so admins see audit fields (``created_at``/``updated_at``) and the
-    public sees only the marketplace card.
-    """
+    """Public category reads; staff-only writes."""
 
     permission_classes = (IsAdminOrReadOnly,)
     lookup_field = "slug"
@@ -56,8 +30,6 @@ class ServiceCategoryViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         qs = ServiceCategory.objects.all()
-        # Hide inactive categories from non-staff browsers; admins see them
-        # so they can flip ``is_active`` from the API.
         user = self.request.user
         if not (user and user.is_authenticated and user.is_staff):
             qs = qs.filter(is_active=True)
@@ -70,24 +42,12 @@ class ServiceCategoryViewSet(viewsets.ModelViewSet):
         return ServiceCategorySerializer
 
 
-# ---------------------------------------------------------------------------
-# Services - public read
-# ---------------------------------------------------------------------------
-
-
 class PublicServiceViewSet(
     mixins.ListModelMixin,
     mixins.RetrieveModelMixin,
     viewsets.GenericViewSet,
 ):
-    """Marketplace browse: only active services from active providers.
-
-    Filters supported via query params:
-    - ``?category=<slug>``           - by category slug
-    - ``?provider=<provider_uuid>``  - by provider profile id
-    - ``?location_type=remote``      - by location type
-    - ``?search=<term>``             - title / description / business_name
-    """
+    """Public service browse and detail."""
 
     serializer_class = ServicePublicSerializer
     permission_classes = (permissions.AllowAny,)
@@ -95,9 +55,6 @@ class PublicServiceViewSet(
     filter_backends = (filters.SearchFilter, filters.OrderingFilter)
     search_fields = ("title", "description", "provider__business_name")
     ordering_fields = ("created_at", "price", "duration_minutes", "is_featured")
-    # Featured services first, then most-recently published. Matches the
-    # marketplace UI's "show me what's promoted, then what's fresh" intent
-    # so the first page is always representative.
     ordering = ("-is_featured", "-created_at")
 
     def get_queryset(self):
@@ -120,22 +77,8 @@ class PublicServiceViewSet(
         return qs
 
 
-# ---------------------------------------------------------------------------
-# Services - owner CRUD
-# ---------------------------------------------------------------------------
-
-
 class MyServicesViewSet(viewsets.ModelViewSet):
-    """Provider-scoped CRUD over the requester's own services.
-
-    - ``list`` and ``retrieve`` return both active and inactive entries so
-      the owner can manage visibility.
-    - ``destroy`` performs a hard delete; providers wanting a reversible
-      "hide it" flow toggle ``is_active=False`` instead.
-    - ``IsServiceOwner`` is technically redundant given ``get_queryset``
-      filters by owner already; keeping it is a belt-and-braces guard
-      against future refactors that broaden the queryset.
-    """
+    """Provider-scoped CRUD for the requester's services."""
 
     permission_classes = (permissions.IsAuthenticated, IsProvider, IsServiceOwner)
     filter_backends = (filters.OrderingFilter,)
@@ -144,8 +87,6 @@ class MyServicesViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         user = self.request.user
-        # Anonymous schema generation (drf-spectacular etc.) hits get_queryset
-        # before permissions; bail out cleanly.
         provider = getattr(user, "provider_profile", None)
         if provider is None:
             return Service.objects.none()

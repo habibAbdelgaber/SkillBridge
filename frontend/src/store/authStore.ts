@@ -13,17 +13,6 @@ import type {
 import { isLoginResponse } from "@/types/auth";
 import { authStorage } from "@/utils/authStorage";
 
-/**
- * Auth store.
- *
- * Responsible for the authenticated user's session: JWT storage via
- * `authStorage`, the Zustand-facing React state, and the primary
- * actions the UI needs (login, register, hydrate, logout).
- *
- * Networking stays in `services/authService.ts`; this store orchestrates
- * those calls and keeps the observable state consistent.
- */
-
 export type AuthStatus =
   | "idle"
   | "authenticating"
@@ -46,9 +35,10 @@ interface AuthState {
 }
 
 function applyLoginResponse(response: LoginResponse): AuthUser {
+  // dj-rest-auth returns {access, refresh, user}.
   authStorage.setTokens({
-    access: response.access_token,
-    refresh: response.refresh_token,
+    access: response.access,
+    refresh: response.refresh,
   });
   authStorage.setUser(response.user);
   return response.user;
@@ -72,7 +62,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       authStorage.setUser(user);
       set({ user, status: "authenticated", isHydrating: false, error: null });
     } catch {
-      // Refresh interceptor will have already cleared storage on a hard 401.
+      // The refresh interceptor clears storage on a hard 401.
       set({ user: null, status: "unauthenticated", isHydrating: false });
     }
   },
@@ -142,12 +132,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 }));
 
-// When a refresh definitively fails, drop the session so guards re-route to /login.
+// Keep this hook here to avoid importing the store from apiClient.
 onSessionExpired(() => {
   useAuthStore.getState().clearSession();
 });
-
-// ---- Selectors ------------------------------------------------------------
 
 export const selectIsAuthenticated = (s: AuthState): boolean =>
   s.status === "authenticated" && s.user !== null;

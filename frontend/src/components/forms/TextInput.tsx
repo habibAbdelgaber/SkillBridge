@@ -6,10 +6,6 @@ interface TextInputProps extends InputHTMLAttributes<HTMLInputElement> {
   hasError?: boolean;
 }
 
-/**
- * Text input styled to match the SkillBridge auth cards (white surface,
- * light border, focus ring in brand primary).
- */
 export const TextInput = forwardRef<HTMLInputElement, TextInputProps>(
   function TextInput({ className, hasError, ...props }, ref) {
     return (

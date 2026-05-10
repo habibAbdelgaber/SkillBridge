@@ -1,6 +1,4 @@
 import { FormEvent, useState } from "react";
-import { Link } from "react-router-dom";
-
 import { AuthCard } from "@/components/auth/AuthCard";
 import { AuthLayout } from "@/components/auth/AuthLayout";
 import { FormBanner } from "@/components/auth/FormBanner";
@@ -8,15 +6,18 @@ import { FormField } from "@/components/forms/FormField";
 import { SubmitButton } from "@/components/forms/SubmitButton";
 import { TextInput } from "@/components/forms/TextInput";
 import { authService } from "@/services/authService";
+import { useUIStore } from "@/store/uiStore";
 import { parseApiError } from "@/utils/parseApiError";
 
 export function ForgotPasswordPage() {
+  const openAuthModal = useUIStore((s) => s.openAuthModal);
   const [email, setEmail] = useState("");
   const [emailError, setEmailError] = useState<string | null>(null);
   const [status, setStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");
-  const [banner, setBanner] = useState<{ tone: "success" | "error"; text: string } | null>(
-    null,
-  );
+  const [banner, setBanner] = useState<{
+    tone: "success" | "error";
+    text: string;
+  } | null>(null);
 
   async function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -51,12 +52,13 @@ export function ForgotPasswordPage() {
         footer={
           <span>
             Remembered it?{" "}
-            <Link
-              to="/login"
+            <button
+              type="button"
+              onClick={() => openAuthModal("login")}
               className="font-semibold text-brand-primary hover:text-brand-primaryHover"
             >
               Sign in
-            </Link>
+            </button>
           </span>
         }
       >

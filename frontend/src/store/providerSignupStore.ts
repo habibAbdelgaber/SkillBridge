@@ -1,14 +1,5 @@
 import { create } from "zustand";
 
-/**
- * Holds the in-progress provider signup across the two-step flow.
- *
- * Step 1 (Register page) collects the account basics and pushes them here,
- * then navigates to step 2 (Provider registration). If the user refreshes
- * or navigates back, the draft is preserved via `sessionStorage` so the
- * form isn't lost.
- */
-
 export interface ProviderAccountDraft {
   first_name: string;
   last_name: string;
@@ -41,7 +32,7 @@ function persistDraft(draft: ProviderAccountDraft | null): void {
       window.sessionStorage.removeItem(STORAGE_KEY);
     }
   } catch {
-    /* noop */
+    /* storage unavailable */
   }
 }
 

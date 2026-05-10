@@ -1,21 +1,4 @@
-/**
- * Marketplace API layer.
- *
- * Talks to the public Django endpoints:
- *   GET /api/v1/categories/             — categories list
- *   GET /api/v1/services/               — service marketplace listings
- *   GET /api/v1/providers/{id}/         — provider profile (with services + reviews)
- *
- * The endpoints are paginated (DRF ``PageNumberPagination``, page size 20);
- * this layer unwraps ``results`` and exposes a flat array. Pagination can be
- * lifted into the call signature when the SPA grows infinite scroll.
- *
- * Filters not natively supported by the service viewset (rating floor,
- * price bucket, availability window, verification flags) are applied
- * client-side after fetching the first page. This keeps the surface area
- * stable while the backend catches up — the only client-visible cost is
- * that filtered counts are best-effort within a single page.
- */
+/** Marketplace API layer. */
 import { isAxiosError } from "axios";
 
 import { apiClient } from "@/services/apiClient";
@@ -34,26 +17,16 @@ import type {
   SortOption,
 } from "@/types/marketplace";
 
-// ---------------------------------------------------------------------------
-// Endpoint paths
-// ---------------------------------------------------------------------------
-
 const ENDPOINTS = {
   categories: "/api/v1/categories/",
   services: "/api/v1/services/",
+  service: (id: string) => `/api/v1/services/${id}/`,
   provider: (id: string) => `/api/v1/providers/${id}/`,
+  providerAvailability: (id: string) => `/api/v1/providers/${id}/availability/`,
 } as const;
 
-/** Default cards-per-page on the marketplace listing grid. */
 export const DEFAULT_PAGE_SIZE = 6;
 
-/**
- * Paginated services response.
- *
- * `items` is the (filtered + sorted) page payload; the metadata fields
- * mirror DRF's pagination envelope so the SPA can render a "Page X of Y"
- * pager without re-deriving the math.
- */
 export interface ServiceListPage {
   items: ServiceListing[];
   totalCount: number;
@@ -62,18 +35,7 @@ export interface ServiceListPage {
   totalPages: number;
 }
 
-// ---------------------------------------------------------------------------
-// Sort + filter translation
-// ---------------------------------------------------------------------------
-
-/**
- * Map the SPA's sort options onto DRF's ``ordering`` query param.
- *
- * The service viewset only exposes ordering on ``created_at``, ``price``,
- * and ``duration_minutes``. Rating-based sorts can't be pushed down, so
- * they fall back to a stable default ordering and are re-sorted client-
- * side after the response lands.
- */
+/** Map supported sort options onto DRF's ordering query param. */
 function backendOrderingFor(sort: SortOption): string | null {
   switch (sort) {
     case "price-low":
@@ -126,15 +88,9 @@ function passesClientFilters(
     if (filters.price === "100-plus" && price <= 100) return false;
   }
 
-  // ``availability`` and ``verifications`` aren't on the service payload
-  // (they live on the provider). Once the service serializer joins those
-  // fields they can move out of "always pass" and into a real check.
+  // Availability and verification filters need provider data.
   return true;
 }
-
-// ---------------------------------------------------------------------------
-// Service implementation
-// ---------------------------------------------------------------------------
 
 function describeAxiosError(error: unknown, fallback: string): Error {
   if (isAxiosError(error)) {
@@ -155,16 +111,12 @@ function describeAxiosError(error: unknown, fallback: string): Error {
 export const marketplaceService = {
   async listCategories(): Promise<Category[]> {
     try {
-      const { data } = await apiClient.get<ApiPaginated<Parameters<typeof mapCategory>[0]>>(
-        ENDPOINTS.categories,
-        { params: { page_size: 100, ordering: "name" } },
-      );
+      const { data } = await apiClient.get<
+        ApiPaginated<Parameters<typeof mapCategory>[0]>
+      >(ENDPOINTS.categories, { params: { page_size: 100, ordering: "name" } });
       const rows = data.results ?? [];
       const mapped = rows.filter((c) => c.is_active).map(mapCategory);
-      // Prepend a synthetic "All" entry so the chip rail always has a
-      // default active state when no category filter is set. CategoryChips
-      // treats `slug === "all"` as the null filter, so clicking it clears
-      // the category narrow on the listing query.
+      // Synthetic default chip that clears the category filter.
       return [{ slug: "all", label: "All" }, ...mapped];
     } catch (error) {
       throw describeAxiosError(error, "Failed to load categories.");
@@ -189,17 +141,14 @@ export const marketplaceService = {
     if (ordering) params.ordering = ordering;
 
     try {
-      const { data } = await apiClient.get<ApiPaginated<Parameters<typeof mapServicePublic>[0]>>(
-        ENDPOINTS.services,
-        { params },
-      );
+      const { data } = await apiClient.get<
+        ApiPaginated<Parameters<typeof mapServicePublic>[0]>
+      >(ENDPOINTS.services, { params });
       const mapped = (data.results ?? []).map(mapServicePublic);
       const filteredItems = mapped.filter((listing) =>
         passesClientFilters(listing, filters),
       );
-      // Re-sort client-side for rating-based options the backend can't
-      // push down; price ordering already came in correct so the
-      // comparator is a no-op for those.
+      // Rating sorts are client-side until the API supports them.
       filteredItems.sort((a, b) => compareForClientSort(a, b, filters.sort));
       const totalCount = data.count ?? filteredItems.length;
       return {
@@ -222,6 +171,43 @@ export const marketplaceService = {
       return mapProviderDetail(data);
     } catch (error) {
       throw describeAxiosError(error, "Failed to load provider.");
+    }
+  },
+
+  async getService(serviceId: string): Promise<ServiceListing> {
+    try {
+      const { data } = await apiClient.get<Parameters<typeof mapServicePublic>[0]>(
+        ENDPOINTS.service(serviceId),
+      );
+      return mapServicePublic(data);
+    } catch (error) {
+      throw describeAxiosError(error, "Failed to load service.");
+    }
+  },
+
+  async getProviderAvailability(
+    providerId: string,
+    range: { from: string; to: string },
+  ): Promise<
+    Array<{
+      date: string;
+      weekday: number;
+      slots: Array<{ start_time: string; end_time: string }>;
+    }>
+  > {
+    try {
+      const { data } = await apiClient.get<
+        Array<{
+          date: string;
+          weekday: number;
+          slots: Array<{ start_time: string; end_time: string }>;
+        }>
+      >(ENDPOINTS.providerAvailability(providerId), {
+        params: { from: range.from, to: range.to },
+      });
+      return data;
+    } catch (error) {
+      throw describeAxiosError(error, "Failed to load availability.");
     }
   },
 };

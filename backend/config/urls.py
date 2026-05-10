@@ -9,10 +9,6 @@ urlpatterns = [
     path("health/", health_check, name="health-check"),
     path("api/", include("config.api_urls")),
 
-    # django-allauth's classic URL set. Not consumed by the SPA (clients hit
-    # the DRF endpoints under /api/v1/auth/), but its URL *names* must resolve
-    # because dj-rest-auth and allauth internally call reverse() on them
-    # (e.g. ``account_email_verification_sent`` after a successful signup
-    # when ACCOUNT_EMAIL_VERIFICATION='mandatory').
+    # dj-rest-auth and allauth still reverse these URL names internally.
     path("accounts/", include("allauth.urls")),
 ]

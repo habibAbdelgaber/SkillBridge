@@ -1,12 +1,4 @@
-"""Auth / user views.
-
-Reuses ``dj-rest-auth`` where possible and only introduces custom views
-for:
-
-- provider registration (needs a different serializer than the default)
-- provider profile self-service read/update
-- per-provider social login endpoints (Google, Facebook)
-"""
+"""Auth and user views."""
 from __future__ import annotations
 
 from allauth.socialaccount.providers.facebook.views import FacebookOAuth2Adapter
@@ -24,39 +16,30 @@ from apps.users.serializers import (
     ProviderRegisterSerializer,
 )
 
-# ---------------------------------------------------------------------------
-# Public auth endpoints
-# ---------------------------------------------------------------------------
 # The project's global ``DEFAULT_AUTHENTICATION_CLASSES`` includes JWT auth,
 # which runs *before* permission checks. A stale/invalid bearer token in a
 # client would therefore return 401 even on endpoints marked ``AllowAny``.
-# For endpoints that are meant to issue or mint credentials we clear the
-# authentication chain so inbound tokens are ignored entirely.
+# Public auth endpoints ignore inbound tokens entirely.
 _PUBLIC_AUTH_CLASSES: tuple = ()
 _PUBLIC_PERMISSION_CLASSES = (permissions.AllowAny,)
 
 
 class PublicLoginView(LoginView):
-    """``POST /login/`` — always public, ignores any inbound Authorization header."""
+    """Public login endpoint."""
 
     authentication_classes = _PUBLIC_AUTH_CLASSES
     permission_classes = _PUBLIC_PERMISSION_CLASSES
 
 
 class PublicRegisterView(RegisterView):
-    """``POST /register/`` — customer signup, public."""
+    """Public customer signup endpoint."""
 
     authentication_classes = _PUBLIC_AUTH_CLASSES
     permission_classes = _PUBLIC_PERMISSION_CLASSES
 
 
 class ProviderRegisterView(RegisterView):
-    """Dedicated registration endpoint for providers.
-
-    Accepts the full customer payload plus the business onboarding
-    fields defined on ``ProviderRegisterSerializer``. Email verification
-    and JWT issuance follow the same flow as the default register view.
-    """
+    """Public provider signup endpoint."""
 
     serializer_class = ProviderRegisterSerializer
     authentication_classes = _PUBLIC_AUTH_CLASSES
@@ -64,7 +47,7 @@ class ProviderRegisterView(RegisterView):
 
 
 class ProviderProfileMeView(generics.RetrieveUpdateAPIView):
-    """``GET`` / ``PATCH`` the authenticated provider's business profile."""
+    """Read or update the authenticated provider's profile."""
 
     serializer_class = ProviderProfileSerializer
     permission_classes = (permissions.IsAuthenticated,)
@@ -76,19 +59,14 @@ class ProviderProfileMeView(generics.RetrieveUpdateAPIView):
         return profile
 
 
-# ---------------------------------------------------------------------------
-# Social login
-# ---------------------------------------------------------------------------
-
-
 def _resolve_social_callback(path: str) -> str:
-    """Build the frontend callback URL for a given social provider."""
+    """Build a frontend callback URL."""
     frontend = getattr(settings, "FRONTEND_URL", "").rstrip("/")
     return f"{frontend}{path}" if frontend else path
 
 
 class GoogleLoginView(SocialLoginView):
-    """Exchange a Google OAuth2 code/access_token for a SkillBridge JWT pair."""
+    """Exchange Google OAuth2 credentials for SkillBridge tokens."""
 
     adapter_class = GoogleOAuth2Adapter
     client_class = OAuth2Client
@@ -96,7 +74,7 @@ class GoogleLoginView(SocialLoginView):
 
 
 class FacebookLoginView(SocialLoginView):
-    """Exchange a Facebook OAuth2 access_token for a SkillBridge JWT pair."""
+    """Exchange Facebook OAuth2 credentials for SkillBridge tokens."""
 
     adapter_class = FacebookOAuth2Adapter
     client_class = OAuth2Client

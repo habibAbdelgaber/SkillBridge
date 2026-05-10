@@ -1,13 +1,4 @@
-"""Users domain models.
-
-Design:
-- ``User`` holds the authentication identity (email, password, role) and
-  cross-role profile fields (first/last name). It is the ``AUTH_USER_MODEL``.
-- ``ProviderProfile`` holds provider-specific onboarding fields. It is a
-  1:1 extension of ``User`` created only for users whose role is PROVIDER.
-  Keeping this out of ``User`` keeps the auth table lean and lets provider
-  onboarding evolve independently (KYC fields, verification status, etc.).
-"""
+"""User and provider profile models."""
 from __future__ import annotations
 
 import uuid
@@ -24,7 +15,7 @@ from apps.users.managers import UserManager
 
 
 class User(AbstractBaseUser, PermissionsMixin, TimeStampedModel):
-    """Application user. Email-based auth, role-aware."""
+    """Email-based application user."""
 
     class Role(models.TextChoices):
         CUSTOMER = "customer", _("Customer")
@@ -62,7 +53,7 @@ class User(AbstractBaseUser, PermissionsMixin, TimeStampedModel):
         return self.email
 
     def get_full_name(self) -> str:
-        full = f"{self.first_name} {self.last_name}".strip()
+        full = f"{self.first_name.capitalize()} {self.last_name.capitalize()}".strip()
         return full or self.email
 
     def get_short_name(self) -> str:
@@ -82,19 +73,7 @@ class User(AbstractBaseUser, PermissionsMixin, TimeStampedModel):
 
 
 class ProviderProfile(TimeStampedModel):
-    """Provider-specific onboarding fields, 1:1 with a PROVIDER ``User``.
-
-    The fields below are split into three groups by responsibility:
-
-    - **Onboarding** (business_name, tax_id, etc.): captured once during
-      provider signup; mostly KYC.
-    - **Marketplace presentation** (headline, response_time_minutes, …):
-      tunable post-launch by the provider in their dashboard.
-    - **Aggregates** (rating_*, jobs_completed): denormalized counters
-      populated by signal handlers / nightly jobs once Booking and Review
-      records exist. Keeping them here avoids N+1 queries when rendering
-      listing cards.
-    """
+    """Provider-only details used for onboarding and marketplace display."""
 
     class BusinessType(models.TextChoices):
         INDIVIDUAL = "individual", _("Individual / Sole Trader")
@@ -110,8 +89,6 @@ class ProviderProfile(TimeStampedModel):
         on_delete=models.CASCADE,
         related_name="provider_profile",
     )
-
-    # ---- Onboarding -------------------------------------------------------
 
     business_name = models.CharField(_("business name"), max_length=255)
     business_type = models.CharField(
@@ -149,8 +126,6 @@ class ProviderProfile(TimeStampedModel):
         blank=True,
     )
 
-    # ---- Marketplace presentation ----------------------------------------
-
     headline = models.CharField(
         _("headline"),
         max_length=180,
@@ -169,8 +144,6 @@ class ProviderProfile(TimeStampedModel):
             "'Replies in under N hours'."
         ),
     )
-
-    # ---- Trust & safety ---------------------------------------------------
 
     is_verified = models.BooleanField(
         _("verified"),
@@ -196,8 +169,6 @@ class ProviderProfile(TimeStampedModel):
         default=False,
         help_text=_("Third-party background check has cleared."),
     )
-
-    # ---- Denormalized aggregates -----------------------------------------
 
     jobs_completed = models.PositiveIntegerField(
         _("jobs completed"),
@@ -226,8 +197,6 @@ class ProviderProfile(TimeStampedModel):
         verbose_name_plural = _("provider profiles")
         ordering = ("-created_at",)
         indexes = (
-            # Lets the marketplace sort/filter by trust + rating without a
-            # full table scan once the directory grows past a few thousand.
             models.Index(fields=("is_verified", "rating_average")),
         )
 
@@ -236,11 +205,7 @@ class ProviderProfile(TimeStampedModel):
 
     @property
     def verification_flags(self) -> list[str]:
-        """Compact list of badge slugs for the marketplace card.
-
-        Mirrors the ``VerificationFlag`` enum on the frontend so the SPA
-        can render badges without any client-side mapping logic.
-        """
+        """Badge slugs used by marketplace cards."""
         flags: list[str] = []
         if self.id_verified:
             flags.append("id")

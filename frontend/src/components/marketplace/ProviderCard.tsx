@@ -16,18 +16,13 @@ const LOCATION_LABEL: Record<ServiceListing["locationType"], string> = {
   hybrid: "On-site or remote",
 };
 
-/**
- * Listing card.
- *
- * Tile-shaped, image on top, rating + price below. The whole card is a
- * router link to the provider profile so the entire surface feels
- * tappable on touch devices, while the inner CTA stays for sighted-mouse
- * users who expect a button affordance.
- */
 export function ProviderCard({ listing, className }: ProviderCardProps) {
+  const mapHref = `/services/${listing.id}/map`;
+  const mapState = { from: "/marketplace", fromLabel: "Back to marketplace" };
+  const locationLabel = formatServiceLocation(listing);
+
   return (
-    <Link
-      to={`/providers/${listing.providerId}`}
+    <article
       className={cn(
         "group flex flex-col overflow-hidden rounded-2xl border border-brand-borderLight bg-white shadow-card transition-shadow hover:shadow-md",
         className,
@@ -59,15 +54,23 @@ export function ProviderCard({ listing, className }: ProviderCardProps) {
 
       <div className="flex flex-1 flex-col gap-3 p-5">
         <div>
-          <h3 className="text-base font-semibold text-brand-logo group-hover:text-brand-primary">
+          <Link
+            to={mapHref}
+            state={mapState}
+            className="text-base font-semibold text-brand-logo hover:text-brand-primary"
+          >
             {listing.title}
-          </h3>
+          </Link>
           <p className="mt-0.5 text-sm text-brand-muted">by {listing.providerName}</p>
         </div>
 
         <div className="flex items-center justify-between gap-3">
           <RatingBadge average={listing.rating.average} count={listing.rating.count} />
-          <span className="inline-flex items-center gap-1 text-xs font-medium text-brand-muted">
+          <Link
+            to={mapHref}
+            state={mapState}
+            className="inline-flex min-w-0 items-center gap-1 text-xs font-medium text-brand-muted hover:text-brand-primary"
+          >
             <svg
               viewBox="0 0 24 24"
               fill="none"
@@ -79,25 +82,52 @@ export function ProviderCard({ listing, className }: ProviderCardProps) {
               <path d="M12 21s-7-6.5-7-12a7 7 0 1 1 14 0c0 5.5-7 12-7 12z" />
               <circle cx="12" cy="9" r="2.5" />
             </svg>
-            {listing.serviceArea}
-          </span>
+            <span className="truncate">{locationLabel}</span>
+          </Link>
         </div>
 
         <div className="mt-auto flex items-center justify-between gap-3 border-t border-brand-borderLight/70 pt-4">
           <div>
-            <PriceBadge hourly={listing.pricePerHour} flat={listing.flatPrice} size="md" />
+            <PriceBadge
+              hourly={listing.pricePerHour}
+              flat={listing.flatPrice}
+              size="md"
+            />
             <p className="mt-0.5 text-[11px] text-brand-muted">
               {LOCATION_LABEL[listing.locationType]}
             </p>
           </div>
-          <span className="inline-flex items-center gap-1 text-sm font-medium text-brand-primary group-hover:text-brand-primaryHover">
+          <Link
+            to={`/providers/${listing.providerId}`}
+            className="inline-flex items-center gap-1 text-sm font-medium text-brand-primary hover:text-brand-primaryHover"
+          >
             View profile
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="h-3.5 w-3.5" aria-hidden="true">
-              <path d="M5 12h14M13 6l6 6-6 6" strokeLinecap="round" strokeLinejoin="round" />
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={2}
+              className="h-3.5 w-3.5"
+              aria-hidden="true"
+            >
+              <path
+                d="M5 12h14M13 6l6 6-6 6"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
             </svg>
-          </span>
+          </Link>
         </div>
       </div>
-    </Link>
+    </article>
+  );
+}
+
+function formatServiceLocation(listing: ServiceListing): string {
+  return (
+    listing.serviceLocationName ||
+    [listing.serviceCity, listing.serviceCountry].filter(Boolean).join(", ") ||
+    listing.serviceArea ||
+    "View location"
   );
 }

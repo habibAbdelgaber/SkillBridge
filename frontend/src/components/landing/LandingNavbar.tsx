@@ -1,52 +1,49 @@
 import { useState } from "react";
-import { Link, NavLink } from "react-router-dom";
+import { Link, NavLink, useNavigate } from "react-router-dom";
 
 import { Logo } from "@/components/ui/Logo";
 import { selectIsAuthenticated, useAuthStore } from "@/store/authStore";
+import { useUIStore } from "@/store/uiStore";
 import { cn } from "@/utils/cn";
 
 interface NavItem {
   label: string;
   to: string;
-  /** Hash anchor on the landing page; we treat these as internal scroll targets. */
   hash?: boolean;
-  /** Hide this item when the user is signed in (e.g. signup-only flows). */
   guestOnly?: boolean;
+  authedOnly?: boolean;
 }
 
 const NAV_ITEMS: NavItem[] = [
+  { label: "Home", to: "/home", authedOnly: true },
   { label: "Marketplace", to: "/marketplace" },
   { label: "How it works", to: "#how-it-works", hash: true },
-  // "Become a pro" routes into the signup funnel which is gated by
-  // RedirectIfAuthed; rather than show a link that just bounces the user
-  // back to "/", we hide it for authenticated sessions.
   { label: "Become a pro", to: "/register/provider", guestOnly: true },
   { label: "Support", to: "#support", hash: true },
 ];
 
-/**
- * Marketing navbar.
- *
- * Distinct from the in-app `Header` so the public landing surface can use
- * its own IA (Marketplace / How it works / Become a pro / Support). Reads
- * `authStore` so the right-hand cluster reflects the live auth state —
- * guest sessions see "Log in / Sign up", authenticated sessions see the
- * user email + role pill + "Sign out" (mirrors `Header.tsx`).
- */
 export function LandingNavbar() {
   const [open, setOpen] = useState(false);
+  const navigate = useNavigate();
   const isAuthenticated = useAuthStore(selectIsAuthenticated);
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
+  const openAuthModal = useUIStore((s) => s.openAuthModal);
 
-  const visibleNavItems = NAV_ITEMS.filter(
-    (item) => !(item.guestOnly && isAuthenticated),
-  );
+  const visibleNavItems = NAV_ITEMS.filter((item) => {
+    if (item.guestOnly && isAuthenticated) return false;
+    if (item.authedOnly && !isAuthenticated) return false;
+    return true;
+  });
 
   const handleLogout = async () => {
     setOpen(false);
     await logout();
+    navigate("/", { replace: true });
   };
+
+  const dashboardHref =
+    user?.role === "provider" ? "/dashboard/provider" : "/dashboard/customer";
 
   return (
     <header className="sticky top-0 z-30 border-b border-brand-borderLight/60 bg-white/85 backdrop-blur">
@@ -90,8 +87,13 @@ export function LandingNavbar() {
         <div className="hidden items-center gap-3 md:flex">
           {isAuthenticated ? (
             <>
-              <span className="flex items-center gap-2 text-xs text-brand-muted">
-                <span className="max-w-[180px] truncate text-brand-logo">
+              <Link
+                to={dashboardHref}
+                aria-label={`Open ${user?.role === "provider" ? "provider" : "customer"} dashboard`}
+                title="Open my dashboard"
+                className="flex items-center gap-2 rounded-full px-2 py-1 text-xs text-brand-muted transition-colors hover:bg-brand-surface/70 hover:text-brand-logo"
+              >
+                <span className="max-w-[180px] truncate font-medium text-brand-logo">
                   {user?.email}
                 </span>
                 {user?.role && (
@@ -99,34 +101,26 @@ export function LandingNavbar() {
                     {user.role}
                   </span>
                 )}
-              </span>
+              </Link>
               <button
                 type="button"
                 onClick={handleLogout}
-                className="rounded-md border border-brand-borderLight px-3 py-1.5 text-xs font-semibold text-brand-logo transition-colors hover:border-brand-primary hover:text-brand-primary"
+                className="rounded-full bg-brand-surface/70 px-3 py-1.5 text-xs font-semibold text-brand-logo transition-colors duration-150 hover:bg-red-400 hover:text-white"
               >
                 Sign out
               </button>
             </>
           ) : (
-            <>
-              <Link
-                to="/login"
-                className="text-sm font-semibold text-brand-logo transition-colors hover:text-brand-primary"
-              >
-                Log in
-              </Link>
-              <Link
-                to="/register"
-                className="inline-flex items-center justify-center rounded-md bg-brand-primary px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-brand-primaryHover hover:text-white"
-              >
-                Sign up
-              </Link>
-            </>
+            <button
+              type="button"
+              onClick={() => openAuthModal("login")}
+              className="inline-flex items-center justify-center rounded-md bg-brand-primary px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-brand-primaryHover hover:text-white"
+            >
+              Sign in
+            </button>
           )}
         </div>
 
-        {/* Mobile toggle */}
         <button
           type="button"
           aria-label={open ? "Close menu" : "Open menu"}
@@ -151,7 +145,6 @@ export function LandingNavbar() {
         </button>
       </div>
 
-      {/* Mobile drawer */}
       {open && (
         <div className="border-t border-brand-borderLight bg-white md:hidden">
           <div className="mx-auto flex w-full max-w-6xl flex-col gap-1 px-6 py-4 text-sm font-medium text-brand-logo">
@@ -180,7 +173,11 @@ export function LandingNavbar() {
             <div className="mt-2 flex items-center gap-3 border-t border-brand-borderLight pt-3">
               {isAuthenticated ? (
                 <>
-                  <span className="flex flex-1 flex-col gap-0.5 text-xs text-brand-muted">
+                  <Link
+                    to={dashboardHref}
+                    onClick={() => setOpen(false)}
+                    className="flex flex-1 flex-col gap-0.5 rounded-md px-2 py-1 text-xs text-brand-muted transition-colors hover:bg-brand-surface/70"
+                  >
                     <span className="truncate text-sm font-semibold text-brand-logo">
                       {user?.email}
                     </span>
@@ -189,32 +186,26 @@ export function LandingNavbar() {
                         {user.role}
                       </span>
                     )}
-                  </span>
+                  </Link>
                   <button
                     type="button"
                     onClick={handleLogout}
-                    className="rounded-md border border-brand-borderLight px-3 py-2 text-center font-semibold text-brand-logo hover:border-brand-primary hover:text-brand-primary"
+                    className="rounded-full bg-brand-surface/70 px-3 py-2 text-center font-semibold text-brand-logo transition-colors duration-150 hover:bg-red-400 hover:text-white"
                   >
                     Sign out
                   </button>
                 </>
               ) : (
-                <>
-                  <Link
-                    to="/login"
-                    onClick={() => setOpen(false)}
-                    className="flex-1 rounded-md border border-brand-borderLight px-3 py-2 text-center font-semibold text-brand-logo"
-                  >
-                    Log in
-                  </Link>
-                  <Link
-                    to="/register"
-                    onClick={() => setOpen(false)}
-                    className="flex-1 rounded-md bg-brand-primary px-3 py-2 text-center font-semibold text-white hover:bg-brand-primaryHover"
-                  >
-                    Sign up
-                  </Link>
-                </>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOpen(false);
+                    openAuthModal("login");
+                  }}
+                  className="flex-1 rounded-md bg-brand-primary px-3 py-2 text-center font-semibold text-white hover:bg-brand-primaryHover"
+                >
+                  Sign in
+                </button>
               )}
             </div>
           </div>

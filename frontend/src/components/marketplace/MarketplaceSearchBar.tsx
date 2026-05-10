@@ -5,20 +5,11 @@ import { cn } from "@/utils/cn";
 interface MarketplaceSearchBarProps {
   value: string;
   onChange: (next: string) => void;
-  /** Debounce window in ms before propagating value upstream. */
   debounceMs?: number;
   placeholder?: string;
   className?: string;
 }
 
-/**
- * Debounced search input.
- *
- * Keeps a local state copy so typing stays cheap, and only forwards the
- * value upstream after `debounceMs` of inactivity — avoids one filter
- * recompute per keystroke when the listing-grid is re-rendering against
- * a non-trivial dataset.
- */
 export function MarketplaceSearchBar({
   value,
   onChange,
@@ -28,7 +19,7 @@ export function MarketplaceSearchBar({
 }: MarketplaceSearchBarProps) {
   const [internal, setInternal] = useState<string>(value);
 
-  // Keep local state in sync if the parent resets the filter.
+  // Keep local state in sync when the parent resets filters.
   useEffect(() => {
     setInternal(value);
   }, [value]);
@@ -72,7 +63,13 @@ export function MarketplaceSearchBar({
           className="rounded-full p-1 text-brand-muted hover:bg-brand-surface hover:text-brand-logo"
           aria-label="Clear search"
         >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="h-3.5 w-3.5">
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2}
+            className="h-3.5 w-3.5"
+          >
             <path d="M6 6l12 12M18 6l-12 12" strokeLinecap="round" />
           </svg>
         </button>

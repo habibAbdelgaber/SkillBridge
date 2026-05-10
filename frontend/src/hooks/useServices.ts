@@ -8,9 +8,7 @@ import {
 import type { MarketplaceFilters, ServiceListing } from "@/types/marketplace";
 
 interface UseServicesOptions {
-  /** 1-indexed page number. Defaults to 1. */
   page?: number;
-  /** Cards per page. Defaults to ``DEFAULT_PAGE_SIZE``. */
   pageSize?: number;
 }
 
@@ -22,19 +20,9 @@ interface UseServicesResult {
   pageSize: number;
   isLoading: boolean;
   error: Error | null;
-  /** Re-runs the query with the current filters + pagination. */
   refetch: () => void;
 }
 
-/**
- * Marketplace listings fetcher.
- *
- * Threads `filters` + pagination through ``marketplaceService.listServices``
- * and exposes a ``ServiceListPage``-shaped result so the page can render a
- * pager. The effect re-runs only on real changes — `filters` is serialized
- * (verifications sorted so order is irrelevant), and each run carries a
- * sequence number so a slow earlier request can't clobber a fresher one.
- */
 export function useServices(
   filters: MarketplaceFilters,
   options: UseServicesOptions = {},
@@ -76,16 +64,14 @@ export function useServices(
       })
       .catch((err: unknown) => {
         if (cancelled || id !== requestId.current) return;
-        setError(
-          err instanceof Error ? err : new Error("Failed to load services."),
-        );
+        setError(err instanceof Error ? err : new Error("Failed to load services."));
         setIsLoading(false);
       });
 
     return () => {
       cancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- key captures filter equality.
   }, [key, version]);
 
   return {

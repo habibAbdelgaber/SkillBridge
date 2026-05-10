@@ -1,21 +1,4 @@
-"""Seed the marketplace with categories, services, and reviews.
-
-Companion to ``seed_providers``: that command sets up the provider
-profiles, this one fans them out into a browsable catalog. Idempotent —
-re-running updates rows in place via ``update_or_create`` keyed on the
-natural identifier (``slug`` for categories and per-provider services,
-the deterministic body for reviews).
-
-Usage::
-
-    python manage.py seed_providers   # one-time provider setup
-    python manage.py seed_services    # safe to re-run
-
-The seed data is curated to produce a believable marketplace UI: each
-category has 1-3 services, hourly + flat pricing is mixed, and
-ratings are pre-aggregated onto the service row so list cards render
-without hitting the review aggregate.
-"""
+"""Seed marketplace categories, services, and reviews."""
 from __future__ import annotations
 
 from decimal import Decimal
@@ -73,9 +56,7 @@ CATEGORIES: list[dict] = [
 ]
 
 
-# Each entry maps onto an existing provider via the provider's
-# ``service_category`` field. Reviews are seeded inline so list cards and
-# detail pages both have aggregated ratings on first load.
+# Services are matched to providers by ``service_category``.
 SERVICES_BY_CATEGORY: dict[str, list[dict]] = {
     "Plumbing": [
         {
@@ -263,13 +244,7 @@ SERVICES_BY_CATEGORY: dict[str, list[dict]] = {
 
 
 def _author_user_for(reviewer_name: str) -> User | None:
-    """Return a real user to attribute a review to.
-
-    Reviews use ``SET_NULL`` on the reviewer FK, so it's fine to leave
-    it ``None`` — the public serializer falls back to the embedded
-    ``author_name`` field below. We still try to attach a real account
-    when one already exists so admin tools (filter-by-reviewer) work.
-    """
+    """Return a real reviewer account when one is available."""
     return None
 
 
@@ -292,8 +267,6 @@ class Command(BaseCommand):
             )
         )
 
-    # ---- categories ------------------------------------------------------
-
     def _seed_categories(self) -> dict[str, ServiceCategory]:
         out: dict[str, ServiceCategory] = {}
         for cat in CATEGORIES:
@@ -307,8 +280,6 @@ class Command(BaseCommand):
             )
             out[cat["name"]] = obj
         return out
-
-    # ---- services + reviews ---------------------------------------------
 
     def _seed_services(
         self,
@@ -374,8 +345,7 @@ class Command(BaseCommand):
         )
 
     def _upsert_reviews(self, service: Service, reviews: list[tuple[str, int, str]]) -> None:
-        # Wipe-and-replace keeps the seed deterministic across re-runs:
-        # otherwise duplicates pile up because there's no natural key.
+        # Reviews do not have a natural seed key, so replace them per service.
         Review.objects.filter(service=service).delete()
         for author_name, rating, body in reviews:
             Review.objects.create(
@@ -399,8 +369,7 @@ class Command(BaseCommand):
         service.save(update_fields=["rating_average", "rating_count", "updated_at"])
 
     def _refresh_provider_aggregates(self, provider: ProviderProfile) -> None:
-        # Re-aggregate provider rating + jobs from the freshly seeded
-        # service rows so the provider profile hero matches the cards.
+        # Keep provider cards aligned with the seeded service reviews.
         services = provider.services.filter(is_active=True)
         total_count = sum(s.rating_count for s in services)
         if total_count == 0:
@@ -410,8 +379,7 @@ class Command(BaseCommand):
             weighted = sum(s.rating_average * s.rating_count for s in services)
             provider.rating_average = (weighted / total_count).quantize(Decimal("0.01"))
             provider.rating_count = total_count
-        # ``jobs_completed`` is a vanity metric; treat each review as a
-        # completed job for seed purposes so the hero card has a number.
+        # Seed jobs from reviews so marketplace cards do not look empty.
         provider.jobs_completed = max(provider.jobs_completed, total_count * 4)
         provider.save(
             update_fields=[

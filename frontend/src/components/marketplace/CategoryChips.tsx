@@ -3,30 +3,22 @@ import type { Category } from "@/types/marketplace";
 
 interface CategoryChipsProps {
   categories: Category[];
-  /** `null` is treated as "all". */
   active: string | null;
   onChange: (slug: string | null) => void;
   className?: string;
 }
 
-/**
- * Auto-fitting category filter row.
- *
- * The chip rail wraps to multiple lines as the available width shrinks,
- * so every category stays visible (no horizontal-scroll truncation).
- * Compact text + tight padding keep the row dense; the parent layout
- * gives the search bar `flex-1 + min-w` so it shrinks responsively
- * around the chips' natural width.
- */
-export function CategoryChips({ categories, active, onChange, className }: CategoryChipsProps) {
+export function CategoryChips({
+  categories,
+  active,
+  onChange,
+  className,
+}: CategoryChipsProps) {
   return (
     <div
       role="tablist"
       aria-label="Service categories"
-      className={cn(
-        "flex flex-wrap items-center gap-1.5",
-        className,
-      )}
+      className={cn("flex flex-wrap items-center gap-1.5", className)}
     >
       {categories.map((category) => {
         const isActive =

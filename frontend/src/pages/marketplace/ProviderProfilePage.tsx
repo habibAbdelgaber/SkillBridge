@@ -32,7 +32,10 @@ export function ProviderProfilePage() {
   const navigate = useNavigate();
 
   return (
-    <Section tone="surface" innerClassName="mx-auto w-full max-w-6xl px-6 py-10 sm:py-14">
+    <Section
+      tone="surface"
+      innerClassName="mx-auto w-full max-w-6xl px-6 py-10 sm:py-14"
+    >
       {isLoading && <LoadingState variant="profile" label="Loading provider…" />}
 
       {!isLoading && error && (
@@ -55,11 +58,18 @@ export function ProviderProfilePage() {
         <ProfileBody
           provider={provider}
           onBook={(slot) => {
-            // Until the booking flow lives in this app, surface the
-            // selection in the URL hash so analytics can tag intent.
-            navigate(
-              `/providers/${provider.id}#book-${slot.date}-${slot.time.replace(":", "")}`,
-            );
+            // Pick the cheapest service offered so the booking page lands
+            // on a sane default; the page itself can later expose a
+            // service-picker if a provider has multiple offerings.
+            const target = pickDefaultService(provider.servicesOffered);
+            if (!target) {
+              navigate(`/providers/${provider.id}#no-services`);
+              return;
+            }
+            const params = new URLSearchParams();
+            params.set("date", slot.date);
+            params.set("time", slot.time);
+            navigate(`/book/${target.id}?${params.toString()}`);
           }}
         />
       )}
@@ -164,4 +174,23 @@ function computeMinHourlyPrice(services: ServiceListing[]): number | null {
   if (flat.length > 0) return Math.min(...flat);
 
   return null;
+}
+
+/**
+ * Pick the default service to send the booking flow against.
+ *
+ * Prefers the cheapest hourly service so "Book now" lands on the
+ * lowest commitment; falls back to the cheapest flat-priced service,
+ * then to the first service in the list. The booking page itself can
+ * surface a service-picker once the provider exposes multiple
+ * offerings the customer needs to disambiguate.
+ */
+function pickDefaultService(services: ServiceListing[]): ServiceListing | null {
+  if (services.length === 0) return null;
+  const sorted = [...services].sort((a, b) => {
+    const aPrice = a.pricePerHour ?? a.flatPrice ?? Number.POSITIVE_INFINITY;
+    const bPrice = b.pricePerHour ?? b.flatPrice ?? Number.POSITIVE_INFINITY;
+    return aPrice - bPrice;
+  });
+  return sorted[0] ?? null;
 }

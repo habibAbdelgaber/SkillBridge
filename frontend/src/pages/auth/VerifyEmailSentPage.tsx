@@ -1,15 +1,17 @@
 import { useState } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { useLocation } from "react-router-dom";
 
 import { AuthCard } from "@/components/auth/AuthCard";
 import { AuthLayout } from "@/components/auth/AuthLayout";
 import { FormBanner } from "@/components/auth/FormBanner";
 import { SubmitButton } from "@/components/forms/SubmitButton";
 import { authService } from "@/services/authService";
+import { useUIStore } from "@/store/uiStore";
 import { parseApiError } from "@/utils/parseApiError";
 
 export function VerifyEmailSentPage() {
   const location = useLocation();
+  const openAuthModal = useUIStore((s) => s.openAuthModal);
   const email = (location.state as { email?: string } | null)?.email ?? "";
 
   const [status, setStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");
@@ -40,12 +42,13 @@ export function VerifyEmailSentPage() {
         footer={
           <span>
             Already verified?{" "}
-            <Link
-              to="/login"
+            <button
+              type="button"
+              onClick={() => openAuthModal("login")}
               className="font-semibold text-brand-primary hover:text-brand-primaryHover"
             >
               Sign in
-            </Link>
+            </button>
           </span>
         }
       >
@@ -68,12 +71,13 @@ export function VerifyEmailSentPage() {
             Resend verification email
           </SubmitButton>
         ) : (
-          <Link
-            to="/login"
+          <button
+            type="button"
+            onClick={() => openAuthModal("login")}
             className="inline-flex h-11 items-center justify-center rounded-lg border border-brand-borderLight bg-white text-sm font-semibold text-brand-logo hover:border-brand-borderStrong"
           >
             Back to sign in
-          </Link>
+          </button>
         )}
       </AuthCard>
     </AuthLayout>

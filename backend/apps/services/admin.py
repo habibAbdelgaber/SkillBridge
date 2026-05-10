@@ -1,4 +1,4 @@
-"""Django admin registrations for the services app."""
+"""Service admin."""
 from __future__ import annotations
 
 from django.contrib import admin
@@ -26,6 +26,8 @@ class ServiceAdmin(admin.ModelAdmin):
         "pricing_type",
         "duration_minutes",
         "location_type",
+        "service_city",
+        "service_country",
         "is_featured",
         "is_active",
         "rating_average",
@@ -46,8 +48,14 @@ class ServiceAdmin(admin.ModelAdmin):
         "description",
         "provider__business_name",
         "provider__user__email",
+        "service_location_name",
+        "service_address",
+        "service_city",
+        "service_country",
     )
     autocomplete_fields = ("provider", "category")
+    # The model still enforces per-provider slug uniqueness.
+    prepopulated_fields = {"slug": ("title",)}
     readonly_fields = ("created_at", "updated_at", "rating_average", "rating_count")
     list_select_related = ("provider", "category")
     ordering = ("-is_featured", "-created_at")

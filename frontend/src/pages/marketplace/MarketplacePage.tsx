@@ -12,21 +12,10 @@ import { LoadingState } from "@/components/ui/LoadingState";
 import { Pagination } from "@/components/ui/Pagination";
 import { Section } from "@/components/ui/Section";
 import { useServices } from "@/hooks/useServices";
-import {
-  DEFAULT_PAGE_SIZE,
-  marketplaceService,
-} from "@/services/marketplaceService";
+import { DEFAULT_PAGE_SIZE, marketplaceService } from "@/services/marketplaceService";
 import type { Category, MarketplaceFilters } from "@/types/marketplace";
 import { EMPTY_FILTERS } from "@/types/marketplace";
 
-/**
- * Marketplace listing page.
- *
- * Layout: full-bleed header band with breadcrumb / title / search, then a
- * two-column body — sidebar filters on the left (>=lg), card grid on the
- * right. Mobile collapses to a stacked layout with a "Show filters"
- * toggle so the controls don't dominate small viewports.
- */
 export function MarketplacePage() {
   const [filters, setFilters] = useState<MarketplaceFilters>(EMPTY_FILTERS);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -52,9 +41,7 @@ export function MarketplacePage() {
     };
   }, []);
 
-  // Whenever any filter changes, snap back to page 1 so the user isn't
-  // stuck on a now-invalid page index (e.g. page 4 of a result set that
-  // just shrunk to two pages after applying a category narrow).
+  // Reset pagination when filters change.
   const filterFingerprint = JSON.stringify({
     ...filters,
     verifications: [...filters.verifications].sort(),
@@ -87,10 +74,6 @@ export function MarketplacePage() {
         className="relative overflow-hidden bg-gradient-to-bl from-brand-logo via-brand-primaryHover to-brand-primary text-white"
         innerClassName="relative mx-auto w-full max-w-6xl px-6 pt-10 pb-6 sm:pt-14"
       >
-        {/* Decorative bubbles. Pointer-events disabled so they never
-            intercept clicks on the search input or the chip rail. Static —
-            no animation per the design brief — but a subtle blur keeps
-            them from flattening against the gradient. */}
         <div aria-hidden="true" className="pointer-events-none absolute inset-0">
           <span className="absolute -right-24 -top-20 h-72 w-72 rounded-full bg-white/10 blur-3xl" />
           <span className="absolute right-1/3 top-10 h-40 w-40 rounded-full bg-sky-300/25 blur-2xl" />
@@ -110,8 +93,8 @@ export function MarketplacePage() {
             </h1>
             <p className="mt-2 max-w-2xl text-sm leading-relaxed text-white/80 sm:text-base">
               Browse {totalCount.toLocaleString()} verified professionals across{" "}
-              {Math.max(0, categories.length - 1)} categories. Filter by
-              availability, rating, and price to find the right match.
+              {Math.max(0, categories.length - 1)} categories. Filter by availability,
+              rating, and price to find the right match.
             </p>
           </div>
 
@@ -121,11 +104,6 @@ export function MarketplacePage() {
           />
         </div>
 
-        {/* Search + categories share one row on >=md. Search shrinks to
-            whatever space the category chips don't claim (clamped by a
-            min width so the input stays usable), and the chip rail
-            wraps to multiple lines instead of scrolling so every
-            category is visible without truncation. */}
         <div className="mt-6 flex flex-col gap-3 md:flex-row md:items-start md:gap-4">
           <div className="md:min-w-[240px] md:max-w-md md:flex-1 md:shrink">
             <MarketplaceSearchBar
@@ -170,7 +148,11 @@ export function MarketplacePage() {
               </svg>
             </button>
             <div className={showFilters ? "mt-3 lg:mt-0" : "hidden lg:block"}>
-              <FilterPanel filters={filters} onChange={setFilters} onReset={resetFilters} />
+              <FilterPanel
+                filters={filters}
+                onChange={setFilters}
+                onReset={resetFilters}
+              />
             </div>
           </div>
 
@@ -215,11 +197,7 @@ export function MarketplacePage() {
                   ))}
                 </div>
 
-                <Pagination
-                  page={page}
-                  totalPages={totalPages}
-                  onChange={goToPage}
-                />
+                <Pagination page={page} totalPages={totalPages} onChange={goToPage} />
               </div>
             )}
           </div>

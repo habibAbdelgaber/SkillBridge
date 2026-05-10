@@ -1,13 +1,9 @@
 import { cn } from "@/utils/cn";
 
 interface RatingBadgeProps {
-  /** 0–5 rating; rendered to one decimal. */
   average: number;
-  /** Total review count. When omitted, only the score is shown. */
   count?: number;
-  /** Visual scale. `sm` is the listing-card variant; `md` is the profile header. */
   size?: "sm" | "md";
-  /** Tone variant. `solid` paints a contrasting pill; `inline` is unstyled. */
   variant?: "solid" | "inline";
   className?: string;
 }
@@ -22,13 +18,6 @@ const STAR_SIZES: Record<NonNullable<RatingBadgeProps["size"]>, string> = {
   md: "h-3.5 w-3.5",
 };
 
-/**
- * Star + numeric rating + optional review count.
- *
- * Shared by listing cards, provider profile headers, and review summaries —
- * keeps presentation logic in one place so a copy or palette tweak doesn't
- * need to fan out across the marketplace.
- */
 export function RatingBadge({
   average,
   count,
@@ -59,7 +48,12 @@ export function RatingBadge({
       </svg>
       <span>{formatted}</span>
       {count != null && (
-        <span className={cn("font-normal", variant === "solid" ? "text-amber-700/70" : "text-brand-muted")}>
+        <span
+          className={cn(
+            "font-normal",
+            variant === "solid" ? "text-amber-700/70" : "text-brand-muted",
+          )}
+        >
           ({count})
         </span>
       )}

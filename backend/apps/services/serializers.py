@@ -1,20 +1,4 @@
-"""Serializers for ServiceCategory, Service, and Review.
-
-Three shapes for Service so the public surface and the owner-write surface
-can evolve independently:
-
-- ``ServicePublicSerializer`` - flat read with embedded category + provider
-  cards. What the marketplace consumes.
-- ``ServiceWriteSerializer`` - what providers POST/PATCH. Strips read-only
-  computed fields, validates business rules, slugifies the title when the
-  client doesn't supply a slug.
-- ``ServiceOwnerSerializer`` - what a provider sees in their own dashboard.
-  Same data as the public serializer but unredacted (e.g. exposes
-  ``is_active`` so toggling visibility is one-click).
-
-``PublicReviewSerializer`` and ``PublicProviderDetailSerializer`` back the
-provider profile page.
-"""
+"""Serializers for the marketplace catalog."""
 from __future__ import annotations
 
 from decimal import Decimal
@@ -26,13 +10,8 @@ from apps.services.models import Review, Service, ServiceCategory
 from apps.users.serializers import PublicProviderProfileSerializer
 
 
-# ---------------------------------------------------------------------------
-# Categories
-# ---------------------------------------------------------------------------
-
-
 class ServiceCategorySerializer(serializers.ModelSerializer):
-    """Public read shape for a category."""
+    """Category payload shown in public listings."""
 
     class Meta:
         model = ServiceCategory
@@ -41,7 +20,7 @@ class ServiceCategorySerializer(serializers.ModelSerializer):
 
 
 class ServiceCategoryAdminSerializer(serializers.ModelSerializer):
-    """Admin-only writes. Slug auto-fills from name when omitted."""
+    """Admin category writes."""
 
     slug = serializers.SlugField(max_length=140, required=False, allow_blank=True)
 
@@ -51,20 +30,13 @@ class ServiceCategoryAdminSerializer(serializers.ModelSerializer):
         read_only_fields = ("id", "created_at", "updated_at")
 
     def validate(self, attrs: dict) -> dict:
-        # Auto-derive a slug from name when the client doesn't supply one;
-        # rely on the unique constraint to surface collisions cleanly.
         if not attrs.get("slug") and attrs.get("name"):
             attrs["slug"] = slugify(attrs["name"])[:140]
         return attrs
 
 
-# ---------------------------------------------------------------------------
-# Services
-# ---------------------------------------------------------------------------
-
-
 class _ServiceBaseSerializer(serializers.ModelSerializer):
-    """Shared field declarations and validators for Service shapes."""
+    """Shared service fields and validation."""
 
     category = ServiceCategorySerializer(read_only=True)
     category_id = serializers.PrimaryKeyRelatedField(
@@ -91,6 +63,12 @@ class _ServiceBaseSerializer(serializers.ModelSerializer):
             "pricing_type",
             "duration_minutes",
             "location_type",
+            "service_location_name",
+            "service_address",
+            "service_city",
+            "service_country",
+            "latitude",
+            "longitude",
             "hero_image_url",
             "is_featured",
             "rating",
@@ -107,15 +85,11 @@ class _ServiceBaseSerializer(serializers.ModelSerializer):
             "updated_at",
         )
 
-    # ---- computed ----------------------------------------------------------
-
     def get_rating(self, obj: Service) -> dict:
         return {
             "average": float(obj.rating_average),
             "count": obj.rating_count,
         }
-
-    # ---- validators --------------------------------------------------------
 
     def validate_price(self, value: Decimal) -> Decimal:
         if value is None or value <= Decimal("0"):
@@ -129,8 +103,7 @@ class _ServiceBaseSerializer(serializers.ModelSerializer):
 
 
 class ServicePublicSerializer(_ServiceBaseSerializer):
-    """Public marketplace read shape. ``is_active`` redacted - only active
-    services hit this serializer in the first place (queryset-filtered)."""
+    """Public marketplace service payload."""
 
     class Meta(_ServiceBaseSerializer.Meta):
         fields = (
@@ -145,6 +118,12 @@ class ServicePublicSerializer(_ServiceBaseSerializer):
             "pricing_type",
             "duration_minutes",
             "location_type",
+            "service_location_name",
+            "service_address",
+            "service_city",
+            "service_country",
+            "latitude",
+            "longitude",
             "hero_image_url",
             "is_featured",
             "rating",
@@ -154,13 +133,7 @@ class ServicePublicSerializer(_ServiceBaseSerializer):
 
 
 class ServiceMiniSerializer(serializers.ModelSerializer):
-    """Compact service shape for nesting under the provider detail.
-
-    Skips the embedded provider card (the parent payload is the provider)
-    and the full description (the listing page already exposes it). Keeps
-    the provider profile response from ballooning when a provider has a
-    long catalog.
-    """
+    """Compact service payload nested in provider detail."""
 
     category = ServiceCategorySerializer(read_only=True)
     rating = serializers.SerializerMethodField()
@@ -177,6 +150,12 @@ class ServiceMiniSerializer(serializers.ModelSerializer):
             "pricing_type",
             "duration_minutes",
             "location_type",
+            "service_location_name",
+            "service_address",
+            "service_city",
+            "service_country",
+            "latitude",
+            "longitude",
             "hero_image_url",
             "is_featured",
             "rating",
@@ -191,25 +170,15 @@ class ServiceMiniSerializer(serializers.ModelSerializer):
 
 
 class ServiceOwnerSerializer(_ServiceBaseSerializer):
-    """What the owning provider sees in their own dashboard - includes
-    ``is_active`` and ``updated_at`` for self-management."""
+    """Service payload for the owning provider."""
 
 
 class ServiceWriteSerializer(_ServiceBaseSerializer):
-    """Provider-side create/update.
-
-    Slug rules
-    ----------
-    - On create: if the client doesn't supply a slug, derive from title.
-      Per-provider uniqueness is enforced by a DB constraint; we surface
-      a friendly error before letting it 500.
-    - On update: slug is editable but defaults to keeping the existing one.
-    """
+    """Provider create/update payload."""
 
     slug = serializers.SlugField(max_length=200, required=False, allow_blank=True)
 
     class Meta(_ServiceBaseSerializer.Meta):
-        # Same fields as the base, but slug is now writable.
         fields = _ServiceBaseSerializer.Meta.fields
         read_only_fields = (
             "id",
@@ -242,9 +211,7 @@ class ServiceWriteSerializer(_ServiceBaseSerializer):
             raise serializers.ValidationError({"slug": "Could not derive a slug from the title."})
         attrs["slug"] = slug
 
-        # Per-provider slug uniqueness. The DB constraint will catch this too,
-        # but we intercept here so the client gets a clear field error instead
-        # of an IntegrityError-derived 500.
+        # Keep slug errors field-specific instead of surfacing an IntegrityError.
         sibling_qs = Service.objects.filter(provider=provider, slug=slug)
         if self.instance is not None:
             sibling_qs = sibling_qs.exclude(pk=self.instance.pk)
@@ -260,18 +227,8 @@ class ServiceWriteSerializer(_ServiceBaseSerializer):
         return super().create(validated_data)
 
 
-# ---------------------------------------------------------------------------
-# Reviews
-# ---------------------------------------------------------------------------
-
-
 class PublicReviewSerializer(serializers.ModelSerializer):
-    """Public review shape used inside the provider profile payload.
-
-    Anonymizes deleted reviewers (``reviewer = NULL`` after a SET_NULL
-    cascade) by returning a generic display name so the UI doesn't have
-    to special-case missing authors.
-    """
+    """Public review payload for provider profiles."""
 
     author_name = serializers.SerializerMethodField()
     service_id = serializers.UUIDField(read_only=True)
@@ -294,27 +251,18 @@ class PublicReviewSerializer(serializers.ModelSerializer):
         return obj.reviewer.get_full_name() or "SkillBridge customer"
 
 
-# ---------------------------------------------------------------------------
-# Provider detail (composite read)
-# ---------------------------------------------------------------------------
-
-
 class PublicProviderDetailSerializer(PublicProviderProfileSerializer):
-    """Provider profile page payload.
-
-    Inherits the public summary fields and adds the two collections the
-    profile page renders inline: ``services_offered`` (active services for
-    this provider) and ``reviews`` (latest published reviews across all
-    of the provider's services).
-    """
+    """Provider profile payload with services, reviews, and availability."""
 
     services_offered = serializers.SerializerMethodField()
     reviews = serializers.SerializerMethodField()
+    availability = serializers.SerializerMethodField()
 
     class Meta(PublicProviderProfileSerializer.Meta):
         fields = PublicProviderProfileSerializer.Meta.fields + (
             "services_offered",
             "reviews",
+            "availability",
         )
         read_only_fields = fields
 
@@ -328,8 +276,6 @@ class PublicProviderDetailSerializer(PublicProviderProfileSerializer):
         return ServiceMiniSerializer(services, many=True, context=self.context).data
 
     def get_reviews(self, obj, *, limit: int = 20) -> list[dict]:
-        # Reviews fan out via Service -> Review; cap the response so we
-        # don't ship an unbounded payload on long-tenured providers.
         reviews = (
             Review.objects
             .select_related("reviewer", "service")
@@ -338,6 +284,34 @@ class PublicProviderDetailSerializer(PublicProviderProfileSerializer):
                 is_published=True,
                 service__is_active=True,
             )
+            # Hide any historical self-reviews.
+            .exclude(reviewer_id=obj.user_id)
             .order_by("-created_at")[:limit]
         )
         return PublicReviewSerializer(reviews, many=True, context=self.context).data
+
+    def get_availability(self, obj) -> list[dict]:
+        """Return the next 7 days of resolved availability."""
+        from datetime import timedelta
+
+        from django.utils import timezone
+
+        from apps.scheduling.resolver import resolve_range
+
+        start = timezone.localdate()
+        end = start + timedelta(days=6)
+        resolved = resolve_range(obj.id, start, end)
+        return [
+            {
+                "date": day.isoformat(),
+                "weekday": day.weekday(),
+                "slots": [
+                    {
+                        "start_time": s.to_times()[0].isoformat(timespec="minutes"),
+                        "end_time": s.to_times()[1].isoformat(timespec="minutes"),
+                    }
+                    for s in slots
+                ],
+            }
+            for day, slots in resolved.items()
+        ]
