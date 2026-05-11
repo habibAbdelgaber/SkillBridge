@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import os
+from urllib.parse import urlparse
 
 import dj_database_url
 from django.core.exceptions import ImproperlyConfigured
@@ -17,10 +18,19 @@ if not SECRET_KEY or SECRET_KEY.startswith("django-insecure"):
         "SECRET_KEY must be set to a strong, unique value in production."
     )
 
-ALLOWED_HOSTS = env_list("ALLOWED_HOSTS", default="")
+def _hostname(value: str) -> str:
+    value = value.strip()
+    if not value:
+        return ""
+    parsed = urlparse(value if "://" in value else f"//{value}")
+    return (parsed.hostname or value).strip().rstrip("/")
+
+
+ALLOWED_HOSTS = [_hostname(host) for host in env_list("ALLOWED_HOSTS", default="")]
+ALLOWED_HOSTS = [host for host in ALLOWED_HOSTS if host]
 
 # DigitalOcean App Platform injects the deployed hostname as APP_DOMAIN.
-_app_domain = os.environ.get("APP_DOMAIN", "").strip()
+_app_domain = _hostname(os.environ.get("APP_DOMAIN", ""))
 if _app_domain and _app_domain not in ALLOWED_HOSTS:
     ALLOWED_HOSTS.append(_app_domain)
 
