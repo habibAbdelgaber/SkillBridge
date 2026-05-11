@@ -144,6 +144,9 @@ if not CORS_ALLOWED_ORIGINS:
     raise ImproperlyConfigured(
         "CORS_ALLOWED_ORIGINS must list at least one origin in production."
     )
+CORS_ALLOWED_ORIGIN_REGEXES = [
+    r"^https://[a-z0-9-]+\.ondigitalocean\.app$",
+]
 CORS_ALLOW_CREDENTIALS = env_bool("CORS_ALLOW_CREDENTIALS", default=True)
 
 
