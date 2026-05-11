@@ -29,7 +29,7 @@ def _hostname(value: str) -> str:
 ALLOWED_HOSTS = [_hostname(host) for host in env_list("ALLOWED_HOSTS", default="")]
 ALLOWED_HOSTS = [host for host in ALLOWED_HOSTS if host]
 
-# DigitalOcean App Platform injects the deployed hostname as APP_DOMAIN.
+# App Platform exposes the deployed hostname as APP_DOMAIN.
 _app_domain = _hostname(os.environ.get("APP_DOMAIN", ""))
 if _app_domain and _app_domain not in ALLOWED_HOSTS:
     ALLOWED_HOSTS.append(_app_domain)
@@ -43,22 +43,10 @@ if not ALLOWED_HOSTS:
     )
 
 
-# Prefer DATABASE_URL; keep DB_* as a deployment fallback.
-#
-# Some PaaS providers (DigitalOcean App Platform, Heroku) don't expose
-# component-bound env vars during the BUILD phase. ``collectstatic`` and
-# ``check`` don't touch the database, so we must let the settings module
-# import cleanly even when DATABASE_URL is missing. We configure a
-# deferred-failure sentinel (SQLite in-memory) that's never actually
-# queried at runtime — by then the real DATABASE_URL is bound and a real
-# Postgres connection is used.
+# Prefer DATABASE_URL; keep DB_* for deployments that split credentials.
 _database_url = os.environ.get("DATABASE_URL", "").strip()
 
-# Reject obvious non-URLs (e.g. an unresolved App Platform binding token
-# like ``${db.DATABASE_URL}`` that fell through because the component
-# name was wrong). dj_database_url would otherwise fail with an opaque
-# "No support for ''" message; treating these as unset gives the boot
-# guard below a chance to print something actionable.
+# Catch unresolved App Platform bindings before dj_database_url raises.
 if _database_url and "://" not in _database_url:
     import logging
 
@@ -101,10 +89,7 @@ elif _has_db_fallback:
         }
     }
 else:
-    # Build-phase fallback. Never queried at runtime — by then App
-    # Platform has bound DATABASE_URL and the real config is loaded.
-    # Any management command that actually needs a DB (migrate, runserver,
-    # tests, shell, etc.) is checked at startup below.
+    # Lets build-only commands import settings before runtime env vars exist.
     import logging
 
     logging.getLogger(__name__).warning(
@@ -119,10 +104,7 @@ else:
     }
 
 
-# At application boot (when gunicorn/manage.py is the entrypoint, NOT
-# during a non-DB build command), require real database configuration.
-# This gives us the same "fail fast on misconfiguration" guarantee
-# without breaking build-time collectstatic.
+# Runtime commands need a real database.
 import sys as _sys  # noqa: E402
 
 _NON_DB_COMMANDS = {"collectstatic", "compress", "compilemessages", "makemessages"}
@@ -151,7 +133,7 @@ if _app_domain:
         CSRF_TRUSTED_ORIGINS.append(_app_origin)
 
 
-# App Platform terminates TLS at its edge; trust the forwarded scheme.
+# App Platform terminates TLS at the edge.
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 SECURE_SSL_REDIRECT = env_bool("SECURE_SSL_REDIRECT", default=True)
 

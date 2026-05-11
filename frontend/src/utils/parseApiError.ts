@@ -10,6 +10,28 @@ const GENERIC_FALLBACK = "Something went wrong. Please try again.";
 const NETWORK_FALLBACK =
   "We couldn't reach the SkillBridge server. Check your connection and try again.";
 
+function readableStringError(data: string, status: number): string {
+  const text = data.trim();
+  if (!text) return `${GENERIC_FALLBACK} (HTTP ${status})`;
+
+  const message = text.match(/<Message>([\s\S]*?)<\/Message>/i)?.[1];
+  if (message) {
+    return message
+      .replace(/&apos;/g, "'")
+      .replace(/&quot;/g, '"')
+      .replace(/&amp;/g, "&")
+      .replace(/&lt;/g, "<")
+      .replace(/&gt;/g, ">")
+      .trim();
+  }
+
+  if (text.startsWith("<")) {
+    return `${GENERIC_FALLBACK} (HTTP ${status})`;
+  }
+
+  return text;
+}
+
 /** Normalize Axios/DRF errors into a form-friendly shape. */
 export function parseApiError(error: unknown): NormalizedApiError {
   if (!axios.isAxiosError(error)) {
@@ -27,7 +49,7 @@ export function parseApiError(error: unknown): NormalizedApiError {
     return {
       message:
         typeof data === "string" && data.trim()
-          ? data
+          ? readableStringError(data, status)
           : `${GENERIC_FALLBACK} (HTTP ${status})`,
       fieldErrors: {},
       status,
