@@ -19,7 +19,7 @@ if not SECRET_KEY or SECRET_KEY.startswith("django-insecure"):
     )
 
 def _hostname(value: str) -> str:
-    value = value.strip()
+    value = value.strip().strip("\"'[]")
     if not value:
         return ""
     parsed = urlparse(value if "://" in value else f"//{value}")
@@ -33,6 +33,9 @@ ALLOWED_HOSTS = [host for host in ALLOWED_HOSTS if host]
 _app_domain = _hostname(os.environ.get("APP_DOMAIN", ""))
 if _app_domain and _app_domain not in ALLOWED_HOSTS:
     ALLOWED_HOSTS.append(_app_domain)
+
+if ".ondigitalocean.app" not in ALLOWED_HOSTS:
+    ALLOWED_HOSTS.append(".ondigitalocean.app")
 
 if not ALLOWED_HOSTS:
     raise ImproperlyConfigured(
