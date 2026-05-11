@@ -20,6 +20,10 @@ and incoming bookings from a dedicated dashboard.
 
 ---
 
+## Design Reference
+
+Figma: https://www.figma.com/design/aAWByYSUyywqLJNii9iXYy/SkillBridge-%E2%80%94-UI-System---Architecture?node-id=2-4&t=PbybkfC2AdwULa4m-1
+
 ## Repository layout
 
 ```
