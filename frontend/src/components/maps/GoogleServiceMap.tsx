@@ -104,7 +104,7 @@ export function GoogleServiceMap({
   useEffect(() => {
     let cancelled = false;
 
-    if (!appConfig.googleMapsApiKey) {
+    if (!appConfig.hasGoogleMapsApiKey) {
       setStatus("loading");
       setError(null);
       return;

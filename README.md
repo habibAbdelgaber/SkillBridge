@@ -13,6 +13,13 @@ and incoming bookings from a dedicated dashboard.
 
 ---
 
+## Live deployment
+
+- Frontend: <https://skillbridge-frontend-96be5.ondigitalocean.app>
+- Backend health check: <https://skillbridge-afcfj.ondigitalocean.app/health/>
+
+---
+
 ## Repository layout
 
 ```

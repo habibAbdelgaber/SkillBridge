@@ -87,7 +87,7 @@ function MapBody({
   const hasCoordinates =
     typeof service.latitude === "number" && typeof service.longitude === "number";
   const hasAddress = addressLines.length > 0;
-  const hasGoogleMapsApiKey = Boolean(appConfig.googleMapsApiKey);
+  const hasGoogleMapsApiKey = appConfig.hasGoogleMapsApiKey;
 
   return (
     <div className="relative min-h-[calc(100vh-9.5rem)] overflow-hidden bg-brand-background">
