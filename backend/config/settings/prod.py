@@ -18,12 +18,24 @@ if not SECRET_KEY or SECRET_KEY.startswith("django-insecure"):
         "SECRET_KEY must be set to a strong, unique value in production."
     )
 
+
 def _hostname(value: str) -> str:
     value = value.strip().strip("\"'[]")
     if not value:
         return ""
     parsed = urlparse(value if "://" in value else f"//{value}")
     return (parsed.hostname or value).strip().rstrip("/")
+
+
+def _origin(value: str) -> str:
+    value = value.strip().strip("\"'[]").rstrip("/")
+    if not value:
+        return ""
+    parsed = urlparse(value)
+    if parsed.scheme and parsed.netloc:
+        return f"{parsed.scheme}://{parsed.netloc}"
+    host = _hostname(value)
+    return f"https://{host}" if host else ""
 
 
 ALLOWED_HOSTS = [_hostname(host) for host in env_list("ALLOWED_HOSTS", default="")]
@@ -118,7 +130,16 @@ if _running_db_command and not DATABASE_CONFIGURED:
     )
 
 
-CORS_ALLOWED_ORIGINS = env_list("CORS_ALLOWED_ORIGINS", default="")
+CORS_ALLOWED_ORIGINS = [
+    origin
+    for origin in (
+        _origin(item) for item in env_list("CORS_ALLOWED_ORIGINS", default="")
+    )
+    if origin
+]
+_frontend_origin = _origin(os.environ.get("FRONTEND_URL", ""))
+if _frontend_origin and _frontend_origin not in CORS_ALLOWED_ORIGINS:
+    CORS_ALLOWED_ORIGINS.append(_frontend_origin)
 if not CORS_ALLOWED_ORIGINS:
     raise ImproperlyConfigured(
         "CORS_ALLOWED_ORIGINS must list at least one origin in production."
@@ -126,11 +147,19 @@ if not CORS_ALLOWED_ORIGINS:
 CORS_ALLOW_CREDENTIALS = env_bool("CORS_ALLOW_CREDENTIALS", default=True)
 
 
-CSRF_TRUSTED_ORIGINS = env_list("CSRF_TRUSTED_ORIGINS", default="")
+CSRF_TRUSTED_ORIGINS = [
+    origin
+    for origin in (
+        _origin(item) for item in env_list("CSRF_TRUSTED_ORIGINS", default="")
+    )
+    if origin
+]
 if _app_domain:
     _app_origin = f"https://{_app_domain}"
     if _app_origin not in CSRF_TRUSTED_ORIGINS:
         CSRF_TRUSTED_ORIGINS.append(_app_origin)
+if _frontend_origin and _frontend_origin not in CSRF_TRUSTED_ORIGINS:
+    CSRF_TRUSTED_ORIGINS.append(_frontend_origin)
 
 
 # App Platform terminates TLS at the edge.
