@@ -56,7 +56,7 @@ CATEGORIES: list[dict] = [
 ]
 
 
-# Services are matched to providers by ``service_category``.
+# Services are matched to providers by service_category.
 SERVICES_BY_CATEGORY: dict[str, list[dict]] = {
     "Plumbing": [
         {
@@ -67,6 +67,12 @@ SERVICES_BY_CATEGORY: dict[str, list[dict]] = {
             "duration_minutes": 60,
             "location_type": "onsite",
             "is_featured": True,
+            "service_location_name": "Tel Aviv Savidor Center",
+            "service_address": "Al Parashat Drachim St 10",
+            "service_city": "Tel Aviv",
+            "service_country": "Israel",
+            "latitude": Decimal("32.0839"),
+            "longitude": Decimal("34.7983"),
             "description": (
                 "Same-day response for burst pipes, blocked drains, and "
                 "leaking fixtures. Covers diagnosis, sealing, and clean-up."
@@ -75,19 +81,6 @@ SERVICES_BY_CATEGORY: dict[str, list[dict]] = {
                 ("Daniel R.", 5, "Showed up within the hour and fixed a flooded kitchen — saved my evening."),
                 ("Maya S.", 5, "Fast, polite, and walked me through what he was doing."),
                 ("Itai K.", 4, "Good work, slightly above the quoted price but reasonable."),
-            ],
-        },
-        {
-            "title": "Bathroom & kitchen installation",
-            "subtitle": "Faucets, sinks, water heaters",
-            "price": Decimal("110.00"),
-            "pricing_type": "hourly",
-            "duration_minutes": 120,
-            "location_type": "onsite",
-            "is_featured": False,
-            "description": "Full installation and replacement of fixtures with a 30-day warranty.",
-            "reviews": [
-                ("Ronit B.", 5, "New water heater installed cleanly in under two hours."),
             ],
         },
     ],
@@ -100,23 +93,16 @@ SERVICES_BY_CATEGORY: dict[str, list[dict]] = {
             "duration_minutes": 240,
             "location_type": "onsite",
             "is_featured": True,
+            "service_location_name": "Rothschild Boulevard",
+            "service_address": "Rothschild Blvd 45",
+            "service_city": "Tel Aviv",
+            "service_country": "Israel",
+            "latitude": Decimal("32.0645"),
+            "longitude": Decimal("34.7748"),
             "description": "Two-cleaner team, eco-friendly products, includes inside oven and fridge.",
             "reviews": [
                 ("Lior P.", 5, "House looked brand new — even the grout!"),
                 ("Tal M.", 5, "Booked for a move-out and got the deposit back in full."),
-            ],
-        },
-        {
-            "title": "Weekly housekeeping",
-            "subtitle": "Recurring 2-hour visit",
-            "price": Decimal("45.00"),
-            "pricing_type": "hourly",
-            "duration_minutes": 120,
-            "location_type": "onsite",
-            "is_featured": False,
-            "description": "Reliable weekly visit with the same cleaner each time.",
-            "reviews": [
-                ("Ayelet H.", 4, "Consistent and friendly. Occasionally runs 10 minutes late."),
             ],
         },
     ],
@@ -129,6 +115,12 @@ SERVICES_BY_CATEGORY: dict[str, list[dict]] = {
             "duration_minutes": 90,
             "location_type": "onsite",
             "is_featured": True,
+            "service_location_name": "Dizengoff Center",
+            "service_address": "Dizengoff St 50",
+            "service_city": "Tel Aviv",
+            "service_country": "Israel",
+            "latitude": Decimal("32.0753"),
+            "longitude": Decimal("34.7750"),
             "description": "Licensed installation of lighting fixtures and smart-home switches.",
             "reviews": [
                 ("Noa F.", 5, "Installed five smart switches and labeled the breaker — very thorough."),
@@ -145,23 +137,16 @@ SERVICES_BY_CATEGORY: dict[str, list[dict]] = {
             "duration_minutes": 600,
             "location_type": "remote",
             "is_featured": True,
+            "service_location_name": "Remote studio",
+            "service_address": "",
+            "service_city": "Tel Aviv",
+            "service_country": "Israel",
+            "latitude": Decimal("32.0853"),
+            "longitude": Decimal("34.7818"),
             "description": "Two rounds of concepts, one round of refinement, and a delivered brand kit.",
             "reviews": [
                 ("Shai L.", 5, "Captured the brand on the first round of concepts."),
                 ("Maya R.", 5, "Loved the process — felt collaborative the whole time."),
-            ],
-        },
-        {
-            "title": "Landing page design",
-            "subtitle": "Figma file ready for handoff",
-            "price": Decimal("85.00"),
-            "pricing_type": "hourly",
-            "duration_minutes": 480,
-            "location_type": "remote",
-            "is_featured": False,
-            "description": "Wireframe, hi-fi design, and developer-ready Figma file with tokens.",
-            "reviews": [
-                ("Ben H.", 5, "Page converted 30% better than our old one."),
             ],
         },
     ],
@@ -174,6 +159,12 @@ SERVICES_BY_CATEGORY: dict[str, list[dict]] = {
             "duration_minutes": 60,
             "location_type": "hybrid",
             "is_featured": True,
+            "service_location_name": "Hebrew University campus",
+            "service_address": "Safra Campus",
+            "service_city": "Jerusalem",
+            "service_country": "Israel",
+            "latitude": Decimal("31.7750"),
+            "longitude": Decimal("35.1965"),
             "description": "Personalised lesson plans aligned to the matriculation syllabus.",
             "reviews": [
                 ("Yael D.", 5, "My son went from a 70 to a 92. Patient and clear."),
@@ -189,6 +180,12 @@ SERVICES_BY_CATEGORY: dict[str, list[dict]] = {
             "duration_minutes": 120,
             "location_type": "onsite",
             "is_featured": False,
+            "service_location_name": "Park HaYarkon",
+            "service_address": "Rokach Blvd",
+            "service_city": "Tel Aviv",
+            "service_country": "Israel",
+            "latitude": Decimal("32.1007"),
+            "longitude": Decimal("34.8115"),
             "description": "Bi-weekly visit covering lawn, beds, and seasonal pruning.",
             "reviews": [
                 ("Hila C.", 5, "Garden has never looked better."),
@@ -205,41 +202,26 @@ SERVICES_BY_CATEGORY: dict[str, list[dict]] = {
             "duration_minutes": 60,
             "location_type": "onsite",
             "is_featured": False,
+            "service_location_name": "Givatayim Mall area",
+            "service_address": "Derech Yitzhak Rabin 53",
+            "service_city": "Givatayim",
+            "service_country": "Israel",
+            "latitude": Decimal("32.0684"),
+            "longitude": Decimal("34.8125"),
             "description": "Bring the boxes, leave the assembly to a professional.",
             "reviews": [
                 ("Ori G.", 5, "Three flat-pack wardrobes built in under two hours."),
             ],
         },
-        {
-            "title": "TV and shelf mounting",
-            "subtitle": "Wall-safe drilling and cable tidy",
-            "price": Decimal("75.00"),
-            "pricing_type": "flat",
-            "duration_minutes": 60,
-            "location_type": "onsite",
-            "is_featured": False,
-            "description": "Includes wall-type assessment, mounting, and cable concealment.",
-            "reviews": [
-                ("Tom A.", 5, "Mounted a 65\" TV cleanly with no exposed cables."),
-            ],
-        },
     ],
-    "Auto Repair": [
-        {
-            "title": "Brake service & inspection",
-            "subtitle": "Pads, rotors, and full diagnostic",
-            "price": Decimal("180.00"),
-            "pricing_type": "flat",
-            "duration_minutes": 120,
-            "location_type": "onsite",
-            "is_featured": True,
-            "description": "Replacement-grade pads and rotors with a full pre-service inspection.",
-            "reviews": [
-                ("Roni V.", 5, "Honest pricing and explained every part."),
-                ("Sara K.", 4, "Quick turnaround — back on the road same day."),
-            ],
-        },
-    ],
+}
+
+LEGACY_SEEDED_SERVICE_SLUGS = {
+    "bathroom-kitchen-installation",
+    "weekly-housekeeping",
+    "landing-page-design",
+    "tv-and-shelf-mounting",
+    "brake-service-inspection",
 }
 
 
@@ -258,12 +240,14 @@ class Command(BaseCommand):
 
         self.stdout.write(self.style.NOTICE("Seeding services + reviews..."))
         created_services, updated_services = self._seed_services(category_by_name)
+        removed_services = self._remove_legacy_seeded_services()
 
         self.stdout.write(
             self.style.SUCCESS(
                 f"Done: {len(category_by_name)} categories, "
                 f"{created_services} services created, "
-                f"{updated_services} services updated."
+                f"{updated_services} services updated, "
+                f"{removed_services} legacy services removed."
             )
         )
 
@@ -335,6 +319,13 @@ class Command(BaseCommand):
             "pricing_type": payload["pricing_type"],
             "duration_minutes": payload["duration_minutes"],
             "location_type": payload["location_type"],
+            "service_location_name": payload.get("service_location_name", ""),
+            "service_address": payload.get("service_address", ""),
+            "service_city": payload.get("service_city", ""),
+            "service_country": payload.get("service_country", ""),
+            "latitude": payload.get("latitude"),
+            "longitude": payload.get("longitude"),
+            "hero_image_url": "",
             "is_featured": payload.get("is_featured", False),
             "is_active": True,
         }
@@ -343,6 +334,14 @@ class Command(BaseCommand):
             slug=slug,
             defaults=defaults,
         )
+
+    def _remove_legacy_seeded_services(self) -> int:
+        queryset = Service.objects.filter(
+            slug__in=LEGACY_SEEDED_SERVICE_SLUGS,
+        )
+        count = queryset.count()
+        queryset.delete()
+        return count
 
     def _upsert_reviews(self, service: Service, reviews: list[tuple[str, int, str]]) -> None:
         # Reviews do not have a natural seed key, so replace them per service.

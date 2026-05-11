@@ -189,84 +189,12 @@ PROVIDERS = [
             "rating_count": 95,
         },
     },
-    {
-        "email": "auto.repair@example.com",
-        "first_name": "Yossi",
-        "last_name": "Ben-David",
-        "profile": {
-            "business_name": "Yossi Auto Repair",
-            "business_type": "llc",
-            "tax_id": "AR-555888",
-            "phone_number": "+972508888888",
-            "service_category": "Car services",
-            "years_of_experience": 14,
-            "service_area": "Holon",
-            "short_bio": "Reliable car repair and diagnostics.",
-            "license_or_certification_number": "AUTO-9988",
-            "insurance_provider": "Clal",
-            "headline": "Trusted car repair expert",
-            "response_time_minutes": 50,
-            "is_verified": True,
-            "id_verified": True,
-            "is_insured": True,
-            "background_check_completed": True,
-            "jobs_completed": 310,
-            "rating_average": Decimal("4.91"),
-            "rating_count": 160,
-        },
-    },
-    {
-        "email": "deep.clean@example.com",
-        "first_name": "Noa",
-        "last_name": "Peretz",
-        "profile": {
-            "business_name": "DeepClean Experts",
-            "business_type": "corporation",
-            "tax_id": "CL-321654",
-            "phone_number": "+972509999999",
-            "service_category": "Cleaning",
-            "years_of_experience": 11,
-            "service_area": "Haifa",
-            "short_bio": "Deep cleaning and sanitation services.",
-            "license_or_certification_number": "",
-            "insurance_provider": "Harel",
-            "headline": "Deep cleaning & sanitization pros",
-            "response_time_minutes": 35,
-            "is_verified": True,
-            "id_verified": True,
-            "is_insured": True,
-            "background_check_completed": False,
-            "jobs_completed": 290,
-            "rating_average": Decimal("4.78"),
-            "rating_count": 143,
-        },
-    },
-    {
-        "email": "tech.support@example.com",
-        "first_name": "Daniel",
-        "last_name": "Friedman",
-        "profile": {
-            "business_name": "IT Help Desk",
-            "business_type": "individual",
-            "tax_id": "",
-            "phone_number": "+972501010101",
-            "service_category": "IT Support",
-            "years_of_experience": 7,
-            "service_area": "Petah Tikva",
-            "short_bio": "Home and small business IT support.",
-            "license_or_certification_number": "",
-            "insurance_provider": "",
-            "headline": "Fast IT fixes for home & office",
-            "response_time_minutes": 20,
-            "is_verified": False,
-            "id_verified": True,
-            "is_insured": False,
-            "background_check_completed": True,
-            "jobs_completed": 140,
-            "rating_average": Decimal("4.55"),
-            "rating_count": 60,
-        },
-    },
+]
+
+LEGACY_PROVIDER_EMAILS = [
+    "auto.repair@example.com",
+    "deep.clean@example.com",
+    "tech.support@example.com",
 ]
 
 
@@ -309,9 +237,12 @@ class Command(BaseCommand):
             else:
                 updated_count += 1
 
+        removed_count = self._remove_legacy_providers()
+
         self.stdout.write(
             self.style.SUCCESS(
-                f"Provider seed completed. Created: {created_count}, Updated: {updated_count}"
+                f"Provider seed completed. Created: {created_count}, "
+                f"Updated: {updated_count}, Removed legacy: {removed_count}"
             )
         )
         self.stdout.write(
@@ -319,3 +250,12 @@ class Command(BaseCommand):
                 f"Default password for seeded providers: {default_password}"
             )
         )
+
+    def _remove_legacy_providers(self) -> int:
+        users = User.objects.filter(
+            email__in=LEGACY_PROVIDER_EMAILS,
+            role=User.Role.PROVIDER,
+        )
+        count = users.count()
+        users.delete()
+        return count

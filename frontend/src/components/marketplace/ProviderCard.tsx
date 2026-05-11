@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 
+import { ServiceImage } from "@/components/marketplace/ServiceImage";
 import { PriceBadge } from "@/components/ui/PriceBadge";
 import { RatingBadge } from "@/components/ui/RatingBadge";
 import type { ServiceListing } from "@/types/marketplace";
@@ -29,19 +30,7 @@ export function ProviderCard({ listing, className }: ProviderCardProps) {
       )}
     >
       <div className="relative h-40 w-full overflow-hidden bg-brand-surface">
-        {listing.imageUrl ? (
-          <img
-            src={listing.imageUrl}
-            alt=""
-            className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
-            loading="lazy"
-          />
-        ) : (
-          <div
-            aria-hidden="true"
-            className="h-full w-full bg-gradient-to-br from-brand-surface via-white to-brand-borderLight/60"
-          />
-        )}
+        <ServiceImage src={listing.imageUrl} />
         {listing.isFeatured && (
           <span className="absolute left-3 top-3 inline-flex items-center rounded-full bg-amber-100 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-amber-700">
             Featured
