@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link, NavLink, useNavigate } from "react-router-dom";
 
 import { Logo } from "@/components/ui/Logo";
+import { LogoutIcon } from "@/components/ui/LogoutIcon";
 import { selectIsAuthenticated, useAuthStore } from "@/store/authStore";
 import { useUIStore } from "@/store/uiStore";
 import { cn } from "@/utils/cn";
@@ -91,23 +92,28 @@ export function LandingNavbar() {
                 to={dashboardHref}
                 aria-label={`Open ${user?.role === "provider" ? "provider" : "customer"} dashboard`}
                 title="Open my dashboard"
-                className="flex items-center gap-2 rounded-full px-2 py-1 text-xs text-brand-muted transition-colors hover:bg-brand-surface/70 hover:text-brand-logo"
+                className="inline-flex h-9 max-w-[190px] items-center rounded-md bg-brand-surface/70 px-3 text-xs font-medium text-brand-logo transition-colors hover:bg-brand-surface hover:text-brand-logo"
               >
-                <span className="max-w-[180px] truncate font-medium text-brand-logo">
-                  {user?.email}
-                </span>
-                {user?.role && (
-                  <span className="rounded-full bg-brand-surface px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-brand-primary">
-                    {user.role}
-                  </span>
-                )}
+                <span className="truncate">{user?.email}</span>
               </Link>
+              {user?.role && (
+                <Link
+                  to={dashboardHref}
+                  aria-label={`Open ${user.role} dashboard`}
+                  title="Open my dashboard"
+                  className="inline-flex h-9 items-center rounded-md bg-brand-surface/70 px-3 text-[10px] font-semibold uppercase tracking-wider text-brand-primary transition-colors hover:bg-brand-surface hover:text-brand-primary"
+                >
+                  {user.role}
+                </Link>
+              )}
               <button
                 type="button"
+                aria-label="Sign out"
+                title="Sign out"
                 onClick={handleLogout}
-                className="rounded-full bg-brand-surface/70 px-3 py-1.5 text-xs font-semibold text-brand-logo transition-colors duration-150 hover:bg-red-400 hover:text-white"
+                className="inline-flex h-9 w-9 items-center justify-center rounded-md bg-brand-surface/70 text-brand-logo transition-colors duration-150 hover:bg-red-400 hover:text-white"
               >
-                Sign out
+                <LogoutIcon />
               </button>
             </>
           ) : (
@@ -176,23 +182,29 @@ export function LandingNavbar() {
                   <Link
                     to={dashboardHref}
                     onClick={() => setOpen(false)}
-                    className="flex flex-1 flex-col gap-0.5 rounded-md px-2 py-1 text-xs text-brand-muted transition-colors hover:bg-brand-surface/70"
+                    className="flex min-w-0 flex-1 items-center rounded-md bg-brand-surface/70 px-3 py-2 text-xs text-brand-muted transition-colors hover:bg-brand-surface"
                   >
                     <span className="truncate text-sm font-semibold text-brand-logo">
                       {user?.email}
                     </span>
-                    {user?.role && (
-                      <span className="text-[10px] font-semibold uppercase tracking-wider text-brand-primary">
-                        {user.role}
-                      </span>
-                    )}
                   </Link>
+                  {user?.role && (
+                    <Link
+                      to={dashboardHref}
+                      onClick={() => setOpen(false)}
+                      className="inline-flex h-10 items-center rounded-md bg-brand-surface/70 px-3 text-[10px] font-semibold uppercase tracking-wider text-brand-primary transition-colors hover:bg-brand-surface"
+                    >
+                      {user.role}
+                    </Link>
+                  )}
                   <button
                     type="button"
+                    aria-label="Sign out"
+                    title="Sign out"
                     onClick={handleLogout}
-                    className="rounded-full bg-brand-surface/70 px-3 py-2 text-center font-semibold text-brand-logo transition-colors duration-150 hover:bg-red-400 hover:text-white"
+                    className="inline-flex h-10 w-10 items-center justify-center rounded-md bg-brand-surface/70 text-brand-logo transition-colors duration-150 hover:bg-red-400 hover:text-white"
                   >
-                    Sign out
+                    <LogoutIcon />
                   </button>
                 </>
               ) : (

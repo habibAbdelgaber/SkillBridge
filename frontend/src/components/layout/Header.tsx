@@ -1,6 +1,7 @@
 import { Link, useNavigate } from "react-router-dom";
 
 import { Logo } from "@/components/ui/Logo";
+import { LogoutIcon } from "@/components/ui/LogoutIcon";
 import { selectIsAuthenticated, useAuthStore } from "@/store/authStore";
 import { useUIStore } from "@/store/uiStore";
 
@@ -59,21 +60,31 @@ export function Header() {
                     : "/dashboard/customer"
                 }
                 title="Open my dashboard"
-                className="flex items-center gap-1.5 rounded-full px-2 py-1 text-xs text-brand-muted transition-colors hover:bg-brand-surface/70 hover:text-brand-logo"
+                className="inline-flex h-9 max-w-[190px] items-center rounded-md bg-brand-surface/70 px-3 text-xs font-medium text-brand-logo transition-colors hover:bg-brand-surface hover:text-brand-logo"
               >
-                <span className="font-medium text-brand-logo">{user?.email}</span>
-                {user?.role && (
-                  <span className="rounded-full bg-brand-surface px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-brand-primary">
-                    {user.role}
-                  </span>
-                )}
+                <span className="truncate">{user?.email}</span>
               </Link>
+              {user?.role && (
+                <Link
+                  to={
+                    user.role === "provider"
+                      ? "/dashboard/provider"
+                      : "/dashboard/customer"
+                  }
+                  title="Open my dashboard"
+                  className="inline-flex h-9 items-center rounded-md bg-brand-surface/70 px-3 text-[10px] font-semibold uppercase tracking-wider text-brand-primary transition-colors hover:bg-brand-surface hover:text-brand-primary"
+                >
+                  {user.role}
+                </Link>
+              )}
               <button
                 type="button"
+                aria-label="Sign out"
+                title="Sign out"
                 onClick={() => void handleLogout()}
-                className="rounded-full bg-brand-surface/70 px-3 py-1.5 text-xs font-semibold text-brand-logo transition-colors duration-150 hover:bg-red-400 hover:text-white"
+                className="inline-flex h-9 w-9 items-center justify-center rounded-md bg-brand-surface/70 text-brand-logo transition-colors duration-150 hover:bg-red-400 hover:text-white"
               >
-                Sign out
+                <LogoutIcon />
               </button>
             </div>
           ) : (

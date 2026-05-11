@@ -1,7 +1,10 @@
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { Link, NavLink } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 
 import { Logo } from "@/components/ui/Logo";
+import { LogoutIcon } from "@/components/ui/LogoutIcon";
+import { useAuthStore } from "@/store/authStore";
 import type { AuthUser } from "@/types/auth";
 import { cn } from "@/utils/cn";
 import { formatUserFullName } from "@/utils/displayName";
@@ -149,6 +152,7 @@ const Icons = {
       ⚙️
     </span>
   ),
+  logout: <LogoutIcon />,
 };
 
 const PROVIDER_ITEMS: SidebarItem[] = [
@@ -192,6 +196,9 @@ export function DashboardSidebar({
   variant,
   className,
 }: DashboardSidebarProps) {
+  const navigate = useNavigate();
+  const logout = useAuthStore((s) => s.logout);
+  const [isSigningOut, setIsSigningOut] = useState(false);
   const cfg = VARIANT_CONFIG[variant];
   const fullName = formatUserFullName(user.first_name, user.last_name, user.email);
   const subtitle =
@@ -200,6 +207,16 @@ export function DashboardSidebar({
       : variant === "customer"
         ? user.email
         : cfg.fallbackSubtitle;
+
+  async function handleLogout() {
+    setIsSigningOut(true);
+    try {
+      await logout();
+      navigate("/", { replace: true });
+    } finally {
+      setIsSigningOut(false);
+    }
+  }
 
   return (
     <aside
@@ -258,29 +275,43 @@ export function DashboardSidebar({
           variant === "provider" && "border-t border-brand-borderLight",
         )}
       >
-        <NavLink
-          to={cfg.profileHref}
-          title="Open my profile"
-          className={({ isActive }) =>
-            cn(
-              "flex items-center gap-3 rounded-md px-2 py-1.5 transition-colors",
-              isActive
-                ? "bg-brand-surface/70"
-                : "bg-brand-background hover:bg-brand-surface/60",
-            )
-          }
-        >
-          <div
-            aria-hidden="true"
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#4f9bc8] text-xs font-bold text-white"
+        <div className="flex items-center gap-2">
+          <NavLink
+            to={cfg.profileHref}
+            title="Open my profile"
+            className={({ isActive }) =>
+              cn(
+                "flex min-w-0 flex-1 items-center gap-3 rounded-md px-2 py-1.5 transition-colors",
+                isActive
+                  ? "bg-brand-surface/70"
+                  : "bg-brand-background hover:bg-brand-surface/60",
+              )
+            }
           >
-            {initials}
-          </div>
-          <div className="min-w-0">
-            <p className="truncate text-sm font-semibold text-brand-logo">{fullName}</p>
-            <p className="truncate text-xs text-brand-muted">{subtitle}</p>
-          </div>
-        </NavLink>
+            <div
+              aria-hidden="true"
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#4f9bc8] text-xs font-bold text-white"
+            >
+              {initials}
+            </div>
+            <div className="min-w-0">
+              <p className="truncate text-sm font-semibold text-brand-logo">
+                {fullName}
+              </p>
+              <p className="truncate text-xs text-brand-muted">{subtitle}</p>
+            </div>
+          </NavLink>
+          <button
+            type="button"
+            aria-label="Sign out"
+            title="Sign out"
+            disabled={isSigningOut}
+            onClick={() => void handleLogout()}
+            className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-md bg-brand-background text-brand-logo transition-colors duration-150 hover:bg-red-400 hover:text-white disabled:cursor-wait disabled:opacity-70"
+          >
+            {Icons.logout}
+          </button>
+        </div>
       </div>
     </aside>
   );
