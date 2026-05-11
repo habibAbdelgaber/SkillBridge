@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation, useParams } from "react-router-dom";
 
+import { appConfig } from "@/app/config";
 import { GoogleServiceMap } from "@/components/maps/GoogleServiceMap";
 import { ErrorState } from "@/components/ui/ErrorState";
 import { LoadingState } from "@/components/ui/LoadingState";
@@ -86,6 +87,7 @@ function MapBody({
   const hasCoordinates =
     typeof service.latitude === "number" && typeof service.longitude === "number";
   const hasAddress = addressLines.length > 0;
+  const hasGoogleMapsApiKey = Boolean(appConfig.googleMapsApiKey);
 
   return (
     <div className="relative min-h-[calc(100vh-9.5rem)] overflow-hidden bg-brand-background">
@@ -118,61 +120,63 @@ function MapBody({
         </div>
       )}
 
-      <aside className="pointer-events-none absolute inset-x-0 top-6 z-10 flex justify-center px-4 sm:inset-x-auto sm:left-6 sm:top-1/2 sm:-translate-y-1/2 sm:justify-start sm:px-0">
-        <div className="pointer-events-auto w-full max-w-sm rounded-2xl border border-white/60 bg-white/65 p-5 shadow-card backdrop-blur-md">
-          <Link
-            to={backHref}
-            className="inline-flex items-center gap-2 text-sm font-semibold text-brand-primary hover:text-brand-primaryHover"
-          >
-            <svg
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth={1.75}
-              className="h-4 w-4"
-              aria-hidden="true"
+      {hasGoogleMapsApiKey && (
+        <aside className="pointer-events-none absolute inset-x-0 top-6 z-10 flex justify-center px-4 sm:inset-x-auto sm:left-6 sm:top-1/2 sm:-translate-y-1/2 sm:justify-start sm:px-0">
+          <div className="pointer-events-auto w-full max-w-sm rounded-2xl border border-white/60 bg-white/65 p-5 shadow-card backdrop-blur-md">
+            <Link
+              to={backHref}
+              className="inline-flex items-center gap-2 text-sm font-semibold text-brand-primary hover:text-brand-primaryHover"
             >
-              <path
-                d="M19 12H5m6-6-6 6 6 6"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-            {backLabel}
-          </Link>
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={1.75}
+                className="h-4 w-4"
+                aria-hidden="true"
+              >
+                <path
+                  d="M19 12H5m6-6-6 6 6 6"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+              {backLabel}
+            </Link>
 
-          <div className="mt-5">
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand-muted">
-              Service location
-            </p>
-            <h1 className="mt-2 text-2xl font-bold tracking-tight text-brand-logo">
-              {service.title}
-            </h1>
-            <p className="mt-1 text-sm font-medium text-brand-muted">
-              {service.providerName}
-            </p>
+            <div className="mt-5">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand-muted">
+                Service location
+              </p>
+              <h1 className="mt-2 text-2xl font-bold tracking-tight text-brand-logo">
+                {service.title}
+              </h1>
+              <p className="mt-1 text-sm font-medium text-brand-muted">
+                {service.providerName}
+              </p>
+            </div>
+
+            <dl className="mt-5 space-y-4 text-sm">
+              <InfoRow label="Location name" value={service.serviceLocationName} />
+              <InfoRow label="Address" value={service.serviceAddress} />
+              <InfoRow label="City" value={service.serviceCity} />
+              <InfoRow label="Country" value={service.serviceCountry} />
+              <InfoRow label="Service area" value={service.serviceArea} />
+            </dl>
+
+            {(hasCoordinates || hasAddress) && (
+              <a
+                href={googleMapsHref(service)}
+                target="_blank"
+                rel="noreferrer"
+                className="mt-5 inline-flex w-full items-center justify-center rounded-md bg-brand-primary px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-brand-primaryHover hover:text-white"
+              >
+                Open in Google Maps
+              </a>
+            )}
           </div>
-
-          <dl className="mt-5 space-y-4 text-sm">
-            <InfoRow label="Location name" value={service.serviceLocationName} />
-            <InfoRow label="Address" value={service.serviceAddress} />
-            <InfoRow label="City" value={service.serviceCity} />
-            <InfoRow label="Country" value={service.serviceCountry} />
-            <InfoRow label="Service area" value={service.serviceArea} />
-          </dl>
-
-          {(hasCoordinates || hasAddress) && (
-            <a
-              href={googleMapsHref(service)}
-              target="_blank"
-              rel="noreferrer"
-              className="mt-5 inline-flex w-full items-center justify-center rounded-md bg-brand-primary px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-brand-primaryHover hover:text-white"
-            >
-              Open in Google Maps
-            </a>
-          )}
-        </div>
-      </aside>
+        </aside>
+      )}
     </div>
   );
 }

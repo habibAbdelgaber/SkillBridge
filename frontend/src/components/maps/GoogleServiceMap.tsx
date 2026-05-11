@@ -105,8 +105,8 @@ export function GoogleServiceMap({
     let cancelled = false;
 
     if (!appConfig.googleMapsApiKey) {
-      setStatus("error");
-      setError("Google Maps API key is missing.");
+      setStatus("loading");
+      setError(null);
       return;
     }
 
