@@ -4,7 +4,7 @@ The customer- and provider-facing web app for **SkillBridge**, a service-marketp
 MVP. Customers browse pros, book jobs, and track requests; providers manage their
 profile, availability, and incoming bookings from a dedicated dashboard.
 
-This is the user-facing surface for the submission — the backend exists as a sibling
+This is the user-facing surface for the submission - the backend exists as a sibling
 project (`backend/`) and is referenced only where its endpoints are needed to run the
 frontend locally.
 
@@ -106,9 +106,9 @@ frontend/
 ## Environment variables
 
 Vite only exposes variables prefixed with `VITE_` to the client bundle. Do not put
-server-side secrets here — they're inlined at build time and shipped in the JS.
+server-side secrets here - they're inlined at build time and shipped in the JS.
 
-Copy `.env.example` to `.env.local` (preferred for local dev — `.env.local` is
+Copy `.env.example` to `.env.local` (preferred for local dev - `.env.local` is
 gitignored by Vite):
 
 ```bash
@@ -189,7 +189,7 @@ You can locally serve the production build with `npm run preview` (defaults to p
 
 ## Deployment
 
-The frontend is a static SPA — host it anywhere that serves static files with a
+The frontend is a static SPA - host it anywhere that serves static files with a
 single-page-app fallback. Configuration below is for DigitalOcean App Platform but
 the same shape works for Vercel, Netlify, Cloudflare Pages, etc.
 
@@ -227,17 +227,17 @@ or every API call will fail with a CORS error.
 
 Generate a Maps Platform key in Google Cloud Console restricted to the frontend's
 deployed origin (HTTP referer restriction). Until map widgets ship, leaving this
-blank is fine — the SPA renders without map features.
+blank is fine - the SPA renders without map features.
 
 ### Common deployment issues
 
-- **Deep-link 404s** — Catch-all path isn't set to `/index.html`.
-- **CORS errors in DevTools** — Backend `CORS_ALLOWED_ORIGINS` doesn't include the
+- **Deep-link 404s** - Catch-all path isn't set to `/index.html`.
+- **CORS errors in DevTools** - Backend `CORS_ALLOWED_ORIGINS` doesn't include the
   frontend origin; add it and redeploy the backend.
-- **API requests hit `http://localhost:8000`** — `VITE_API_URL` wasn't set at build
+- **API requests hit `http://localhost:8000`** - `VITE_API_URL` wasn't set at build
   time on the host. Vite inlines env vars during `npm run build`, so the build must
   re-run after changing the variable.
-- **`Authentication credentials were not provided`** — The user's tokens were
+- **`Authentication credentials were not provided`** - The user's tokens were
   cleared. The app's refresh-on-401 path requires `Authorization: Bearer` to round-
   trip; check that no proxy is stripping the header.
 
@@ -252,7 +252,7 @@ npm test              # Vitest watch mode
 npm run test:run      # one-shot
 ```
 
-Vitest is configured but the suite is intentionally small — focus during the MVP has
+Vitest is configured but the suite is intentionally small - focus during the MVP has
 been on shipping flows. Expanding coverage is on the roadmap.
 
 ---
@@ -272,7 +272,7 @@ been on shipping flows. Expanding coverage is on the roadmap.
   visible across roles. WebSocket / SSE is out of scope for this submission.
 - **Maps not yet integrated.** `VITE_GOOGLE_MAPS_API_KEY` is wired through
   `appConfig` but no component consumes it yet.
-- **Email-verification deep links require backend `FRONTEND_URL`** — verify the
+- **Email-verification deep links require backend `FRONTEND_URL`** - verify the
   backend env var matches the frontend origin or the link in verification emails
   will 404.
 
@@ -282,36 +282,36 @@ been on shipping flows. Expanding coverage is on the roadmap.
 
 Short-term (next iterations):
 
-- **Customer dashboard** — bookings list, escrow status, jobs completed, ratings
+- **Customer dashboard** - bookings list, escrow status, jobs completed, ratings
   given, profile edit.
-- **Provider availability management UI** — weekly schedule editor + per-date
+- **Provider availability management UI** - weekly schedule editor + per-date
   overrides backed by the existing `/api/v1/me/availability/` endpoints.
-- **Payments** — Stripe Checkout / Payment Intents, escrow release on customer
+- **Payments** - Stripe Checkout / Payment Intents, escrow release on customer
   confirmation, post-payment status routing.
-- **Provider-side accept / decline** — replace the dashboard stubs with a real
+- **Provider-side accept / decline** - replace the dashboard stubs with a real
   `PATCH /bookings/<id>/` flow once the backend exposes it.
-- **Google Maps / Places** — autocomplete on the job address input, provider service
+- **Google Maps / Places** - autocomplete on the job address input, provider service
   area overlay on the profile page.
 
 Mid-term:
 
-- **Notifications** — email + push for booking lifecycle, refresh of dashboard
+- **Notifications** - email + push for booking lifecycle, refresh of dashboard
   cards on receipt.
-- **Reviews & ratings** — customer-side write-review flow gated on completed
+- **Reviews & ratings** - customer-side write-review flow gated on completed
   bookings; in-place display improvements.
-- **Admin moderation tools** — flag/unflag reviews, suspend services or providers.
-- **Backend production deployment hardening** — managed Postgres binding,
+- **Admin moderation tools** - flag/unflag reviews, suspend services or providers.
+- **Backend production deployment hardening** - managed Postgres binding,
   managed-email provider, monitoring + uptime alerts.
 
 Tooling:
 
-- **Improved test coverage** — component-level Vitest + Testing Library for the
+- **Improved test coverage** - component-level Vitest + Testing Library for the
   booking flow, route-guard tests, mapper unit tests.
-- **CI/CD** — GitHub Actions running `typecheck`, `lint`, `test:run`, and a Vite
+- **CI/CD** - GitHub Actions running `typecheck`, `lint`, `test:run`, and a Vite
   build on every PR; preview deploys for the frontend.
-- **Performance** — route-level code splitting, image optimisation pipeline,
+- **Performance** - route-level code splitting, image optimisation pipeline,
   prefetch hints on the marketplace card hover.
-- **Accessibility** — full keyboard navigation pass, axe-core CI lint, ARIA
+- **Accessibility** - full keyboard navigation pass, axe-core CI lint, ARIA
   refinements on the calendar and time-slot picker.
 
 ---
@@ -332,19 +332,19 @@ Tailwind's utility classes are scoped by a small design-token palette declared i
 `tailwind.config.*`: `brand-primary`, `brand-primaryHover`, `brand-logo`,
 `brand-muted`, `brand-borderLight`, `brand-borderStrong`, `brand-surface`,
 `brand-background`. Shared spacing / radius patterns are defined inline rather
-than abstracted into class names — the code is intentionally explicit.
+than abstracted into class names - the code is intentionally explicit.
 
 ### Routing
 
 React Router v6 with two layout shells:
 
-- **`LandingLayout`** — marketing navbar + footer; wraps `/`, `/marketplace`,
+- **`LandingLayout`** - marketing navbar + footer; wraps `/`, `/marketplace`,
   `/providers/:id`, `/home`, `/book/:serviceId`, `/bookings/:id`,
   `/booking/success`, `/booking/failure`.
-- **`MainLayout`** — minimal shell for auth flows: `/login`, `/register`,
+- **`MainLayout`** - minimal shell for auth flows: `/login`, `/register`,
   `/register/provider`, `/forgot-password`, `/reset-password/:uid/:token`,
   `/verify-email/:key`, `/verify-email-sent`, 404 fallback.
-- **`/dashboard/provider*`** — renders outside both shells; the provider dashboard
+- **`/dashboard/provider*`** - renders outside both shells; the provider dashboard
   brings its own sidebar layout.
 
 Route guards live in `src/components/auth/`: `RequireAuth` redirects guests to
@@ -353,7 +353,7 @@ users off the auth funnel.
 
 ### API service layer
 
-All HTTP goes through `services/apiClient.ts` — a single Axios instance with:
+All HTTP goes through `services/apiClient.ts` - a single Axios instance with:
 
 - `baseURL` from `appConfig.apiUrl`
 - Request interceptor that injects `Authorization: Bearer <access>` from
@@ -375,7 +375,7 @@ tokens, status (`idle` / `authenticating` / `authenticated` / `unauthenticated` 
 actions. Components subscribe via selector hooks
 (e.g. `useAuthStore(selectIsAuthenticated)`).
 
-The rest of the app uses local component state plus per-page custom hooks —
+The rest of the app uses local component state plus per-page custom hooks -
 deliberately, to avoid premature globalisation of view state.
 
 ### Environment-based configuration
@@ -396,9 +396,9 @@ without worrying about double-slash bugs.
 ### How the frontend connects to the backend
 
 - **Public endpoints** (`/api/v1/categories/`, `/api/v1/services/`, public provider
-  detail, public availability) — fetched without auth; CORS only.
+  detail, public availability) - fetched without auth; CORS only.
 - **Authenticated endpoints** (`/api/v1/bookings/`, `/api/v1/me/availability/*`,
-  `/api/v1/auth/user/`) — `apiClient` attaches the Bearer token automatically.
-- **Token lifecycle** — JWT issued on `/api/v1/auth/login/`, stored in
+  `/api/v1/auth/user/`) - `apiClient` attaches the Bearer token automatically.
+- **Token lifecycle** - JWT issued on `/api/v1/auth/login/`, stored in
   `localStorage` under `skillbridge.auth.tokens.v1`, rotated on every refresh, and
   cleared on a hard 401 or explicit `logout()`.

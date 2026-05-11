@@ -2,8 +2,8 @@
 
 Two separate components, both connected to the same GitHub monorepo:
 
-1. **Backend** — Web Service, source dir `backend/`
-2. **Frontend** — Static Site, source dir `frontend/`
+1. **Backend** - Web Service, source dir `backend/`
+2. **Frontend** - Static Site, source dir `frontend/`
 
 This guide assumes managed Postgres on App Platform.
 
@@ -22,7 +22,7 @@ This guide assumes managed Postgres on App Platform.
 | Health check path | `/health/` |
 | Instance size | basic-xs to start |
 
-A `Procfile` is committed in `backend/` covering both the release migration and the gunicorn web command, so App Platform will auto-detect them if you leave the build/run fields blank — but the explicit values above override cleanly.
+A `Procfile` is committed in `backend/` covering both the release migration and the gunicorn web command, so App Platform will auto-detect them if you leave the build/run fields blank - but the explicit values above override cleanly.
 
 `runtime.txt` pins Python to `3.11.10`.
 

@@ -56,19 +56,19 @@ Health probe: `GET http://localhost:8000/health/`.
 
 ## Tech stack
 
-- **Frontend** — React 18, TypeScript 5, Vite 6, Tailwind CSS 3, React Router v6,
+- **Frontend** - React 18, TypeScript 5, Vite 6, Tailwind CSS 3, React Router v6,
   Zustand, Axios, Vitest.
-- **Backend** — Python 3.11, Django 5, Django REST Framework, SimpleJWT,
+- **Backend** - Python 3.11, Django 5, Django REST Framework, SimpleJWT,
   dj-rest-auth, PostgreSQL (SQLite for local dev), Whitenoise, Gunicorn.
 
 ---
 
 ## Documentation
 
-- [`frontend/README.md`](./frontend/README.md) — full frontend documentation
+- [`frontend/README.md`](./frontend/README.md) - full frontend documentation
   (features, structure, env vars, local setup, build, deployment, roadmap,
   technical notes).
-- [`DEPLOY.md`](./DEPLOY.md) — DigitalOcean App Platform deployment guide for
+- [`DEPLOY.md`](./DEPLOY.md) - DigitalOcean App Platform deployment guide for
   backend + frontend.
 
 ---
