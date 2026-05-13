@@ -148,6 +148,14 @@ class BaseRegisterSerializer(RegisterSerializer):
     def validate_last_name(self, value: str) -> str:
         return _normalise_personal_name(value)
 
+    def validate_email(self, value: str) -> str:
+        email = value.strip().lower()
+        if User.objects.filter(email__iexact=email).exists():
+            raise serializers.ValidationError(
+                "A user with this email address already exists."
+            )
+        return email
+
     def get_cleaned_data(self) -> dict[str, Any]:
         data = super().get_cleaned_data()
         data["first_name"] = self.validated_data.get("first_name", "")

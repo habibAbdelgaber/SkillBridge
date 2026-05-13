@@ -170,6 +170,20 @@ class CustomerRegistrationAPITests(APITestCase):
         self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertFalse(User.objects.filter(email="mismatch@example.com").exists())
 
+    def test_duplicate_email_is_rejected_with_field_error(self):
+        make_customer(email="taken@example.com")
+        payload = {
+            "email": "taken@example.com",
+            "password1": "Pa55word!",
+            "password2": "Pa55word!",
+            "first_name": "Taken",
+            "last_name": "Email",
+        }
+        resp = self.client.post(self.url, payload, format="json")
+        self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("email", resp.data)
+        self.assertEqual(User.objects.filter(email="taken@example.com").count(), 1)
+
 
 class LoginAPITests(APITestCase):
     """The SPA reads ``access`` / ``refresh`` keys from this response."""
