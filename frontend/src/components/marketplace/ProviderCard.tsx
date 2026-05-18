@@ -25,18 +25,18 @@ export function ProviderCard({ listing, className }: ProviderCardProps) {
   return (
     <article
       className={cn(
-        "group flex flex-col overflow-hidden rounded-2xl border border-brand-borderLight bg-white shadow-card transition-shadow hover:shadow-md",
+        "group flex flex-col overflow-hidden rounded-md bg-white shadow-card transition-shadow hover:shadow-md",
         className,
       )}
     >
       <div className="relative h-40 w-full overflow-hidden bg-brand-surface">
         <ServiceImage src={listing.imageUrl} />
         {listing.isFeatured && (
-          <span className="absolute left-3 top-3 inline-flex items-center rounded-full bg-amber-100 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-amber-700">
+          <span className="absolute left-3 top-3 inline-flex items-center rounded-md bg-amber-100 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-amber-700">
             Featured
           </span>
         )}
-        <span className="absolute right-3 top-3 inline-flex items-center rounded-full bg-white/95 px-2 py-1 text-[11px] font-medium text-brand-logo shadow-sm">
+        <span className="absolute right-3 top-3 inline-flex items-center rounded-md bg-white/95 px-2 py-1 text-[11px] font-medium text-brand-logo shadow-sm">
           {listing.category.label}
         </span>
       </div>

@@ -24,6 +24,11 @@ and incoming bookings from a dedicated dashboard.
 
 Figma: https://www.figma.com/design/aAWByYSUyywqLJNii9iXYy/SkillBridge-%E2%80%94-UI-System---Architecture?node-id=2-4&t=PbybkfC2AdwULa4m-1
 
+## Project Pitch Video
+
+Check out [this video](https://drive.google.com/file/d/14DY5GkzS1uVOqXXdGF-Kurxu0Kp8dPOh/view?usp=sharing), where I describe my
+project and some challenges I faced while building it.
+
 ## Repository layout
 
 ```

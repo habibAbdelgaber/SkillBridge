@@ -17,17 +17,7 @@ export default {
         },
       },
       fontFamily: {
-        sans: [
-          "Inter",
-          "ui-sans-serif",
-          "system-ui",
-          "-apple-system",
-          "Segoe UI",
-          "Roboto",
-          "Helvetica Neue",
-          "Arial",
-          "sans-serif",
-        ],
+        sans: ["Inter", "system-ui", "sans-serif"],
       },
       boxShadow: {
         card: "0 1px 2px rgba(8, 48, 107, 0.04), 0 4px 16px rgba(8, 48, 107, 0.06)",
