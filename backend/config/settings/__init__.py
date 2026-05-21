@@ -1,0 +1,1 @@
+"""SkillBridge settings package."""
