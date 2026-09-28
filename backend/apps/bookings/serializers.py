@@ -1,10 +1,13 @@
 """Booking serializers."""
 from __future__ import annotations
 
+from django.core.exceptions import ValidationError as DjangoValidationError
+from django.db import transaction
 from rest_framework import serializers
 
 from apps.bookings.models import Booking
 from apps.services.models import Service
+from apps.users.models import ProviderProfile
 
 
 class _ServiceMiniSerializer(serializers.ModelSerializer):
@@ -86,34 +89,20 @@ class BookingCreateSerializer(serializers.ModelSerializer):
         )
         read_only_fields = ("id", "status", "total_price", "created_at")
 
-    def validate(self, attrs):
-        request = self.context.get("request")
-        customer = getattr(request, "user", None) if request else None
-        service: Service = attrs["service"]
-
-        # Booking.clean() owns availability and overlap checks.
-        booking = Booking(
-            customer=customer,
-            provider=service.provider,
-            service=service,
-            scheduled_date=attrs.get("scheduled_date"),
-            start_time=attrs.get("start_time"),
-            end_time=attrs.get("end_time"),
-            notes=attrs.get("notes", ""),
-            status=Booking.Status.PENDING,
-            # Filled with the derived price in create().
-            total_price=0,
-        )
-        booking.clean()
-        return attrs
-
+    @transaction.atomic
     def create(self, validated_data):
         request = self.context["request"]
         service: Service = validated_data["service"]
 
+        # Every booking for this provider locks the same existing row. PostgreSQL
+        # holds the lock through validation and insert, including when there are
+        # no prior bookings for the requested day.
+        ProviderProfile.objects.select_for_update().get(pk=service.provider_id)
+        service.refresh_from_db()
+
         booking = Booking(
             customer=request.user,
-            provider=service.provider,
+            provider_id=service.provider_id,
             service=service,
             scheduled_date=validated_data["scheduled_date"],
             start_time=validated_data["start_time"],
@@ -122,6 +111,11 @@ class BookingCreateSerializer(serializers.ModelSerializer):
             status=Booking.Status.PENDING,
             total_price=0,
         )
+        try:
+            booking.full_clean()
+        except DjangoValidationError as exc:
+            raise serializers.ValidationError(exc.message_dict) from exc
+
         booking.total_price = booking.derive_total_price()
         booking.save()
         return booking
