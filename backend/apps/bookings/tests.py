@@ -9,12 +9,15 @@ from __future__ import annotations
 
 from datetime import date, time, timedelta
 from decimal import Decimal
+from concurrent.futures import ThreadPoolExecutor
+from threading import Barrier
 
-from django.test import TestCase
+from django.db import close_old_connections, connection
+from django.test import TestCase, TransactionTestCase
 from django.urls import reverse
 from django.utils import timezone
 from rest_framework import status
-from rest_framework.test import APITestCase
+from rest_framework.test import APIClient, APITestCase
 
 from apps.bookings.models import Booking
 from apps.scheduling.models import WeeklyAvailability
@@ -246,6 +249,31 @@ class BookingAPITests(_BookingFixtureMixin, APITestCase):
         resp = self.client.post(self.list_url, payload, format="json")
         self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST)
 
+    def test_overlapping_booking_returns_validation_error(self):
+        self._seed_booking_for(self.customer)
+        self.client.force_authenticate(user=self.other_customer)
+        resp = self.client.post(self.list_url, {
+            "service": str(self.service.id),
+            "scheduled_date": self.tomorrow().isoformat(),
+            "start_time": "14:30",
+            "end_time": "15:30",
+        }, format="json")
+        self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST, resp.data)
+        self.assertIn("start_time", resp.data)
+        self.assertEqual(Booking.objects.count(), 1)
+
+    def test_adjacent_booking_does_not_overlap(self):
+        self._seed_booking_for(self.customer)
+        self.client.force_authenticate(user=self.other_customer)
+        resp = self.client.post(self.list_url, {
+            "service": str(self.service.id),
+            "scheduled_date": self.tomorrow().isoformat(),
+            "start_time": "15:00",
+            "end_time": "16:00",
+        }, format="json")
+        self.assertEqual(resp.status_code, status.HTTP_201_CREATED, resp.data)
+        self.assertEqual(Booking.objects.count(), 2)
+
     # ---- role-scoped queryset ------------------------------------------
 
     def _seed_booking_for(self, customer: User) -> Booking:
@@ -308,3 +336,44 @@ class BookingAPITests(_BookingFixtureMixin, APITestCase):
         self.client.force_authenticate(user=self.provider_user)
         resp = self.client.patch(url, {"status": "cancelled"}, format="json")
         self.assertEqual(resp.status_code, status.HTTP_403_FORBIDDEN)
+
+
+class ConcurrentBookingTests(_BookingFixtureMixin, TransactionTestCase):
+    """Exercise the production row lock using separate database connections."""
+
+    def setUp(self):
+        if connection.vendor != "postgresql":
+            self.skipTest("PostgreSQL row locking is required for this test")
+        self.make_world()
+
+    def test_simultaneous_requests_only_reserve_one_slot(self):
+        barrier = Barrier(2)
+        payload = {
+            "service": str(self.service.id),
+            "scheduled_date": self.tomorrow().isoformat(),
+            "start_time": "10:00",
+            "end_time": "11:00",
+        }
+
+        def create_booking(customer_id):
+            close_old_connections()
+            try:
+                client = APIClient()
+                client.force_authenticate(user=User.objects.get(pk=customer_id))
+                barrier.wait(timeout=10)
+                return client.post(reverse("bookings:booking-list"), payload, format="json")
+            finally:
+                close_old_connections()
+
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            futures = [
+                pool.submit(create_booking, customer.id)
+                for customer in (self.customer, self.other_customer)
+            ]
+            responses = [future.result(timeout=20) for future in futures]
+
+        self.assertCountEqual(
+            [response.status_code for response in responses],
+            [status.HTTP_201_CREATED, status.HTTP_400_BAD_REQUEST],
+        )
+        self.assertEqual(Booking.objects.count(), 1)
