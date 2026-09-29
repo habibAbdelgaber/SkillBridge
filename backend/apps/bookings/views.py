@@ -2,8 +2,12 @@
 from __future__ import annotations
 
 from rest_framework import mixins, permissions, viewsets
+from rest_framework.decorators import action
+from rest_framework.response import Response
+from rest_framework.exceptions import ValidationError as DRFValidationError
 
 from apps.bookings.models import Booking
+from apps.bookings.pricing import BookingPricingError, quote_booking
 from apps.bookings.permissions import (
     CanCancelBooking,
     IsBookingParticipant,
@@ -11,6 +15,7 @@ from apps.bookings.permissions import (
 )
 from apps.bookings.serializers import (
     BookingCreateSerializer,
+    BookingQuoteSerializer,
     BookingReadSerializer,
     BookingStatusUpdateSerializer,
 )
@@ -47,7 +52,9 @@ class BookingViewSet(
         return qs.filter(customer_id=user.id)
 
     def get_serializer_class(self):
-        if self.action == "create":
+        if self.action == "quote":
+            return BookingQuoteSerializer
+        if self.action in ("create", "quote"):
             return BookingCreateSerializer
         if self.action in ("update", "partial_update"):
             return BookingStatusUpdateSerializer
@@ -64,3 +71,20 @@ class BookingViewSet(
         else:
             classes = (permissions.IsAuthenticated,)
         return [cls() for cls in classes]
+
+    @action(detail=False, methods=["post"], url_path="quote")
+    def quote(self, request):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        attrs = serializer.validated_data
+        try:
+            price = quote_booking(attrs["service"], attrs["start_time"], attrs["end_time"])
+        except BookingPricingError as exc:
+            raise DRFValidationError({"service": str(exc)}) from exc
+        return Response({
+            "currency": price.currency,
+            "service_fee": format(price.service_fee, ".2f"),
+            "platform_fee": format(price.platform_fee, ".2f"),
+            "vat_amount": format(price.vat_amount, ".2f"),
+            "total_price": format(price.total_price, ".2f"),
+        })

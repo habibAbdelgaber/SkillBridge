@@ -120,6 +120,11 @@ TIME_ZONE = os.environ.get("TIME_ZONE", "UTC")
 USE_I18N = True
 USE_TZ = True
 
+# Booking policy. Rates are fractions, e.g. 0.18 for 18%.
+# Confirm tax applicability for each supported market before launch.
+BOOKING_PLATFORM_FEE_RATE = os.environ.get("BOOKING_PLATFORM_FEE_RATE", "0.10")
+BOOKING_VAT_RATE = os.environ.get("BOOKING_VAT_RATE", "0.18")
+
 
 STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"

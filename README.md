@@ -68,6 +68,25 @@ python manage.py runserver
 
 Health probe: `GET http://localhost:8000/health/`.
 
+### Booking price contract
+
+Authenticated customers request `POST /api/v1/bookings/quote/` with `service`,
+`scheduled_date`, `start_time`, and `end_time`. The response contains decimal
+strings for `service_fee`, `platform_fee`, `vat_amount`, and `total_price`, plus
+`currency` (`USD`). The booking `POST /api/v1/bookings/` accepts the same slot and
+the quoted `total_price` as `quoted_total`; a changed price returns HTTP 400 and
+requires a fresh quote. The server recalculates and stores every component.
+
+Flat services use their listed price. Hourly services round the requested
+duration up to a whole hour. The platform fee is 10% of the service fee, and
+VAT defaults to 18% of the service fee plus platform fee. Each component rounds
+to cents, half up, before the total is summed. Deployments can configure
+`BOOKING_PLATFORM_FEE_RATE` and `BOOKING_VAT_RATE` as decimal fractions. Check
+tax applicability for the service and customer location before accepting real
+payments; the MVP applies one configured rate to all services. Existing booking
+totals are preserved by migration and receive zero historical fee and tax
+components where no breakdown was recorded.
+
 ---
 
 ## Tech stack

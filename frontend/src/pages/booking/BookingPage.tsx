@@ -11,6 +11,7 @@ import { LoadingState } from "@/components/ui/LoadingState";
 import { Section } from "@/components/ui/Section";
 import { BookingValidationError, bookingService } from "@/services/bookingService";
 import { marketplaceService } from "@/services/marketplaceService";
+import type { BookingQuote } from "@/types/booking";
 import type { ProviderSummary, ServiceListing } from "@/types/marketplace";
 
 interface AvailabilityDayApi {
@@ -19,8 +20,6 @@ interface AvailabilityDayApi {
   slots: Array<{ start_time: string; end_time: string }>;
 }
 
-const PLATFORM_FEE_RATE = 0.1; // 10% of service fee
-const VAT_RATE = 0.18; // matches IL VAT (≈18%)
 const AVAILABILITY_WINDOW_DAYS = 30;
 
 /**
@@ -31,7 +30,7 @@ const AVAILABILITY_WINDOW_DAYS = 30;
  *      availability for the next 30 days.
  *   2. The customer picks a date and a start-time (slots come from the
  *      backend's resolved availability so weekends / off-days greyed out).
- *   3. The summary card aggregates service fee + platform fee + VAT.
+ *   3. The server quotes the selected window and the summary shows that quote.
  *   4. Submit POSTs to /api/v1/bookings/. Backend field errors are
  *      mapped to inline messages; success routes to /bookings/<id>.
  */
@@ -69,6 +68,10 @@ export function BookingPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string[]>>({});
   const [banner, setBanner] = useState<string | null>(null);
+  const [quoted, setQuoted] = useState<{ key: string; price: BookingQuote } | null>(null);
+  const [quoteError, setQuoteError] = useState<string | null>(null);
+  const [quoteLoading, setQuoteLoading] = useState(false);
+  const [quoteRefresh, setQuoteRefresh] = useState(0);
 
   // ---- Initial fetch ----------------------------------------------------
   useEffect(() => {
@@ -147,30 +150,39 @@ export function BookingPage() {
     }
   }, [slotsForSelectedDate, selectedTime]);
 
-  // ---- Pricing ---------------------------------------------------------
+  // ---- Server quote ----------------------------------------------------
   const durationMinutes = service?.durationMinutes ?? 0;
+  const quoteKey = service && selectedDate && selectedTime
+    ? `${service.id}|${selectedDate}|${selectedTime}|${durationMinutes}|${quoteRefresh}`
+    : null;
+  const quote = quoteKey && quoted?.key === quoteKey ? quoted.price : null;
 
-  const pricing = useMemo(() => {
-    if (!service) return { serviceFee: 0, platformFee: 0, vat: 0, total: 0 };
-    const baseRate = service.pricePerHour ?? service.flatPrice ?? 0;
-    let serviceFee = 0;
-    if (service.pricePerHour != null) {
-      const hours = Math.max(1, Math.ceil(durationMinutes / 60));
-      serviceFee = baseRate * hours;
-    } else {
-      serviceFee = baseRate;
-    }
-    const platformFee = round2(serviceFee * PLATFORM_FEE_RATE);
-    const vat = round2((serviceFee + platformFee) * VAT_RATE);
-    const total = round2(serviceFee + platformFee + vat);
-    return { serviceFee, platformFee, vat, total };
-  }, [service, durationMinutes]);
+  useEffect(() => {
+    if (!quoteKey || !service || !selectedDate || !selectedTime) return;
+    let cancelled = false;
+    setQuoteLoading(true);
+    setQuoteError(null);
+    bookingService.quote({
+      service: service.id,
+      scheduledDate: selectedDate,
+      startTime: ensureSeconds(selectedTime),
+      endTime: ensureSeconds(addMinutes(selectedTime, durationMinutes)),
+    }).then((price) => {
+      if (!cancelled) setQuoted({ key: quoteKey, price });
+    }).catch((error: unknown) => {
+      if (!cancelled) setQuoteError(error instanceof Error ? error.message : "Quote unavailable.");
+    }).finally(() => {
+      if (!cancelled) setQuoteLoading(false);
+    });
+    return () => { cancelled = true; };
+  }, [quoteKey, service, selectedDate, selectedTime, durationMinutes]);
 
   // ---- Submit ----------------------------------------------------------
   const canSubmit = Boolean(
     service &&
     selectedDate &&
     selectedTime &&
+    quote &&
     address.trim().length > 0 &&
     !isSubmitting,
   );
@@ -191,7 +203,7 @@ export function BookingPage() {
   const canNextMonth = monthsBetween(today, visibleMonth) < 2; // today, +1, +2
 
   async function handleSubmit() {
-    if (!canSubmit || !service || !selectedDate || !selectedTime) return;
+    if (!canSubmit || !service || !selectedDate || !selectedTime || !quote) return;
     setIsSubmitting(true);
     setFieldErrors({});
     setBanner(null);
@@ -208,6 +220,7 @@ export function BookingPage() {
         scheduledDate: selectedDate,
         startTime: start,
         endTime: end,
+        quotedTotal: quote.totalPrice,
         notes: noteBlock,
       });
       navigate(`/bookings/${booking.id}`, { replace: true });
@@ -215,6 +228,7 @@ export function BookingPage() {
       if (err instanceof BookingValidationError) {
         setFieldErrors(err.fieldErrors);
         setBanner(err.message);
+        if (err.fieldErrors.quoted_total) setQuoteRefresh((value) => value + 1);
       } else {
         setBanner(err instanceof Error ? err.message : "Failed to create booking.");
       }
@@ -311,15 +325,13 @@ export function BookingPage() {
           selectedDate={selectedDate}
           selectedTime={selectedTime}
           durationMinutes={durationMinutes}
-          serviceFee={pricing.serviceFee}
-          platformFee={pricing.platformFee}
-          vat={pricing.vat}
-          total={pricing.total}
+          quote={quote}
+          quoteLoading={Boolean(quoteKey) && !quote && quoteLoading}
           isSubmitting={isSubmitting}
           canSubmit={canSubmit}
           onSubmit={handleSubmit}
           bannerError={
-            banner ??
+            banner ?? quoteError ??
             firstFieldError(fieldErrors, [
               "non_field_errors",
               "service",
@@ -375,10 +387,6 @@ function addMinutes(hhmm: string, minutes: number): string {
 function normalizeIncomingTime(raw: string | null): string | null {
   if (!raw) return null;
   return raw.length === 4 ? `0${raw}` : raw.slice(0, 5);
-}
-
-function round2(value: number): number {
-  return Math.round(value * 100) / 100;
 }
 
 function monthsBetween(a: Date, b: Date): number {

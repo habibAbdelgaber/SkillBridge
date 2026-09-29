@@ -50,6 +50,8 @@ Mark all `*` entries as **encrypted**:
 | `LOG_LEVEL` | `INFO` | |
 | `DJANGO_LOG_LEVEL` | `WARNING` | |
 | `ACCOUNT_EMAIL_VERIFICATION` | `mandatory` | |
+| `BOOKING_PLATFORM_FEE_RATE` | `0.10` | Fraction of the service fee; set the business policy explicitly |
+| `BOOKING_VAT_RATE` | `0.18` | Fraction of service fee plus platform fee; verify applicability before payments |
 | `SECURE_SSL_REDIRECT` | `True` | |
 
 ### Database component
