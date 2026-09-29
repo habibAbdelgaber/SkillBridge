@@ -2,10 +2,11 @@
 import { isAxiosError } from "axios";
 
 import { apiClient } from "@/services/apiClient";
-import type { Booking, CreateBookingPayload } from "@/types/booking";
+import type { Booking, BookingQuote, BookingQuoteRequest, CreateBookingPayload } from "@/types/booking";
 
 const ENDPOINTS = {
   bookings: "/api/v1/bookings/",
+  quote: "/api/v1/bookings/quote/",
   booking: (id: string) => `/api/v1/bookings/${id}/`,
 } as const;
 
@@ -42,10 +43,32 @@ interface ApiBooking {
   start_time: string;
   end_time: string;
   status: "pending" | "confirmed" | "cancelled";
+  currency: string;
+  service_fee: string;
+  platform_fee: string;
+  vat_amount: string;
   total_price: string;
   notes: string;
   created_at: string;
   updated_at: string;
+}
+
+interface ApiBookingQuote {
+  currency: string;
+  service_fee: string;
+  platform_fee: string;
+  vat_amount: string;
+  total_price: string;
+}
+
+function mapQuote(api: ApiBookingQuote): BookingQuote {
+  return {
+    currency: api.currency,
+    serviceFee: api.service_fee,
+    platformFee: api.platform_fee,
+    vatAmount: api.vat_amount,
+    totalPrice: api.total_price,
+  };
 }
 
 function mapBooking(api: ApiBooking): Booking {
@@ -76,6 +99,10 @@ function mapBooking(api: ApiBooking): Booking {
     startTime: api.start_time,
     endTime: api.end_time,
     status: api.status,
+    currency: api.currency,
+    serviceFee: api.service_fee,
+    platformFee: api.platform_fee,
+    vatAmount: api.vat_amount,
     totalPrice: api.total_price,
     notes: api.notes,
     createdAt: api.created_at,
@@ -145,12 +172,27 @@ function normalizeError(error: unknown, fallback: string): Error {
 }
 
 export const bookingService = {
+  async quote(payload: BookingQuoteRequest): Promise<BookingQuote> {
+    try {
+      const { data } = await apiClient.post<ApiBookingQuote>(ENDPOINTS.quote, {
+        service: payload.service,
+        scheduled_date: payload.scheduledDate,
+        start_time: payload.startTime,
+        end_time: payload.endTime,
+      });
+      return mapQuote(data);
+    } catch (error) {
+      throw normalizeError(error, "Failed to load the booking quote.");
+    }
+  },
+
   async create(payload: CreateBookingPayload): Promise<Booking> {
     const body = {
       service: payload.service,
       scheduled_date: payload.scheduledDate,
       start_time: payload.startTime,
       end_time: payload.endTime,
+      quoted_total: payload.quotedTotal,
       notes: payload.notes ?? "",
     };
     try {

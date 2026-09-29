@@ -110,7 +110,7 @@ export function BookingConfirmationPage() {
   async function handleCancel() {
     if (!booking || cancel.busy || isCancelled) return;
     const ok = window.confirm(
-      "Cancel this booking? The provider will be notified and your card won't be charged.",
+      "Cancel this booking request?",
     );
     if (!ok) return;
     setCancel({ busy: true, error: null });
@@ -161,7 +161,7 @@ export function BookingConfirmationPage() {
           <p className="mx-auto mt-2 max-w-md text-sm leading-relaxed text-brand-muted">
             {isCancelled
               ? "We've let the provider know. You can browse other pros whenever you're ready."
-              : `${booking.provider.businessName} has been notified and typically responds within 1 hour. We'll email you the moment they accept — your card will only be charged then.`}
+              : `Your request for ${booking.provider.businessName} is recorded. Check your dashboard for updates.`}
           </p>
         </header>
 
@@ -199,9 +199,6 @@ export function BookingConfirmationPage() {
               value={
                 <>
                   {display.total}
-                  <span className="ml-1 text-xs font-normal text-brand-muted">
-                    (held only after acceptance)
-                  </span>
                 </>
               }
             />
@@ -220,13 +217,13 @@ export function BookingConfirmationPage() {
               />
               <NextStep
                 index={2}
-                title="You're notified by email + push"
-                detail={`If accepted, your card is charged ${display.total} and held in escrow via Stripe.`}
+                title="Review the booking details"
+                detail={`The recorded total is ${display.total}. Payment is not collected in this booking flow.`}
               />
               <NextStep
                 index={3}
-                title="Job is scheduled & funds released after completion"
-                detail={`We release payment to ${firstName} only once you confirm the job is done.`}
+                title="Coordinate the service"
+                detail={`Confirm the requested time and job details with ${firstName}.`}
               />
             </ol>
           </div>
@@ -292,14 +289,13 @@ export function BookingConfirmationPage() {
             {cancel.error && <p className="text-xs text-rose-600">{cancel.error}</p>}
           </div>
 
-          {/* Escrow reassurance */}
+          {/* Payment clarification */}
           <p className="mt-6 flex items-start gap-2 rounded-md bg-brand-surface/50 px-4 py-3 text-xs leading-relaxed text-brand-muted">
             <span aria-hidden="true" className="mt-0.5">
               🔒
             </span>
             <span>
-              No charge yet. Your card is only authorized after the provider accepts
-              your request, and funds are held in escrow until the job is done.
+              No payment is collected by SkillBridge when you send this booking request.
             </span>
           </p>
         </div>

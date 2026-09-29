@@ -1,4 +1,5 @@
 import type { ProviderSummary, ServiceListing } from "@/types/marketplace";
+import type { BookingQuote } from "@/types/booking";
 import { cn } from "@/utils/cn";
 
 interface BookingSummaryCardProps {
@@ -7,22 +8,14 @@ interface BookingSummaryCardProps {
   selectedDate: string | null;
   selectedTime: string | null;
   durationMinutes: number;
-  serviceFee: number;
-  platformFee: number;
-  vat: number;
-  total: number;
+  quote: BookingQuote | null;
+  quoteLoading: boolean;
   isSubmitting: boolean;
   canSubmit: boolean;
   onSubmit: () => void;
   bannerError?: string;
   className?: string;
 }
-
-const CURRENCY_FORMATTER = new Intl.NumberFormat("en-US", {
-  style: "currency",
-  currency: "USD",
-  minimumFractionDigits: 2,
-});
 
 const DATE_FORMATTER = new Intl.DateTimeFormat(undefined, {
   weekday: "short",
@@ -36,10 +29,8 @@ export function BookingSummaryCard({
   selectedDate,
   selectedTime,
   durationMinutes,
-  serviceFee,
-  platformFee,
-  vat,
-  total,
+  quote,
+  quoteLoading,
   isSubmitting,
   canSubmit,
   onSubmit,
@@ -49,6 +40,11 @@ export function BookingSummaryCard({
   const dateLabel = selectedDate ? formatDate(selectedDate) : "—";
   const timeLabel = selectedTime ? formatTime(selectedTime) : "—";
   const durationLabel = formatDuration(durationMinutes);
+  const formatPrice = (amount: string) => new Intl.NumberFormat("en-US", {
+    style: "currency", currency: quote?.currency ?? "USD",
+    minimumFractionDigits: 2,
+  }).format(Number(amount));
+  const pendingPrice = quoteLoading ? "Calculating…" : "Select an available time";
 
   return (
     <aside
@@ -107,27 +103,23 @@ export function BookingSummaryCard({
       <div className="my-4 h-px bg-brand-borderLight" />
 
       <dl className="space-y-2.5 text-sm">
-        <SummaryRow label="Service fee" value={CURRENCY_FORMATTER.format(serviceFee)} />
+        <SummaryRow label="Service fee" value={quote ? formatPrice(quote.serviceFee) : pendingPrice} />
         <SummaryRow
           label="Platform fee"
-          value={CURRENCY_FORMATTER.format(platformFee)}
+          value={quote ? formatPrice(quote.platformFee) : "—"}
         />
-        <SummaryRow label="VAT" value={CURRENCY_FORMATTER.format(vat)} />
+        <SummaryRow label="VAT" value={quote ? formatPrice(quote.vatAmount) : "—"} />
       </dl>
 
       <div className="mt-4 flex items-baseline justify-between">
         <span className="text-base font-semibold text-brand-logo">Total</span>
         <span className="text-xl font-bold text-brand-logo">
-          {CURRENCY_FORMATTER.format(total)}
+          {quote ? formatPrice(quote.totalPrice) : "—"}
         </span>
       </div>
 
       <p className="mt-4 rounded-md bg-sky-50/80 px-3 py-2 text-xs leading-relaxed text-brand-muted">
-        <span aria-hidden="true" className="mr-1">
-          🔒
-        </span>
-        Payment is held in escrow via Stripe and released to your pro only after you
-        confirm the job is done.
+        The final booking amount is confirmed when you send your request. No payment is collected here.
       </p>
 
       {bannerError && (
@@ -151,7 +143,7 @@ export function BookingSummaryCard({
             : "cursor-not-allowed bg-brand-borderLight text-brand-muted",
         )}
       >
-        {isSubmitting ? "Submitting…" : "Continue to payment →"}
+        {isSubmitting ? "Submitting…" : "Send booking request →"}
       </button>
     </aside>
   );

@@ -17,6 +17,10 @@ class BookingAdmin(admin.ModelAdmin):
         "start_time",
         "end_time",
         "status",
+        "currency",
+        "service_fee",
+        "platform_fee",
+        "vat_amount",
         "total_price",
         "created_at",
     )

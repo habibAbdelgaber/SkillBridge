@@ -33,6 +33,10 @@ export interface Booking {
   startTime: string;
   endTime: string;
   status: BookingStatus;
+  currency: string;
+  serviceFee: string;
+  platformFee: string;
+  vatAmount: string;
   totalPrice: string;
   notes: string;
   createdAt: string;
@@ -44,5 +48,16 @@ export interface CreateBookingPayload {
   scheduledDate: string;
   startTime: string;
   endTime: string;
+  quotedTotal: string;
   notes?: string;
+}
+
+export type BookingQuoteRequest = Omit<CreateBookingPayload, "quotedTotal" | "notes">;
+
+export interface BookingQuote {
+  currency: string;
+  serviceFee: string;
+  platformFee: string;
+  vatAmount: string;
+  totalPrice: string;
 }
