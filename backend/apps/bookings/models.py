@@ -1,7 +1,6 @@
 """Booking records and validation rules."""
 from __future__ import annotations
 
-from datetime import datetime, timedelta
 from decimal import Decimal
 
 from django.conf import settings
@@ -11,7 +10,6 @@ from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 
 from apps.common.models import BaseModel
-from apps.services.models import Service
 
 
 class Booking(BaseModel):
@@ -57,6 +55,10 @@ class Booking(BaseModel):
         default=Status.PENDING,
         db_index=True,
     )
+    service_fee = models.DecimalField(_("service fee"), max_digits=10, decimal_places=2, default=Decimal("0.00"))
+    platform_fee = models.DecimalField(_("platform fee"), max_digits=10, decimal_places=2, default=Decimal("0.00"))
+    vat_amount = models.DecimalField(_("VAT amount"), max_digits=10, decimal_places=2, default=Decimal("0.00"))
+    currency = models.CharField(_("currency"), max_length=3, default="USD")
     total_price = models.DecimalField(
         _("total price"),
         max_digits=10,
@@ -163,21 +165,3 @@ class Booking(BaseModel):
 
         if errors:
             raise ValidationError(errors)
-
-    def derive_total_price(self) -> Decimal:
-        """Return the frozen booking price for the selected service window."""
-        service = self.service
-        if service.pricing_type == Service.PricingType.FLAT:
-            return Decimal(service.price).quantize(Decimal("0.01"))
-
-        start_dt = datetime.combine(self.scheduled_date, self.start_time)
-        end_dt = datetime.combine(self.scheduled_date, self.end_time)
-        delta: timedelta = end_dt - start_dt
-        seconds = max(int(delta.total_seconds()), 0)
-        if seconds == 0:
-            return Decimal("0.00")
-        ceiled_hours = -(-seconds // 3600)  # ceil division
-        ceiled_hours = max(ceiled_hours, 1)
-        return (Decimal(service.price) * Decimal(ceiled_hours)).quantize(
-            Decimal("0.01"),
-        )

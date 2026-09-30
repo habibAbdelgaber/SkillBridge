@@ -9,12 +9,16 @@ from __future__ import annotations
 
 from datetime import date, time, timedelta
 from decimal import Decimal
+from concurrent.futures import ThreadPoolExecutor
+from threading import Barrier
 
-from django.test import TestCase
+from django.db import close_old_connections, connection
+from django.test import TestCase, TransactionTestCase
 from django.urls import reverse
 from django.utils import timezone
+from django.test import override_settings
 from rest_framework import status
-from rest_framework.test import APITestCase
+from rest_framework.test import APIClient, APITestCase
 
 from apps.bookings.models import Booking
 from apps.scheduling.models import WeeklyAvailability
@@ -209,6 +213,7 @@ class BookingAPITests(_BookingFixtureMixin, APITestCase):
             "start_time": "10:00",
             "end_time": "11:00",
             "notes": "Please ring buzzer 4B.",
+            "quoted_total": "110.33",
         }
         resp = self.client.post(self.list_url, payload, format="json")
         self.assertEqual(resp.status_code, status.HTTP_201_CREATED, resp.data)
@@ -217,8 +222,102 @@ class BookingAPITests(_BookingFixtureMixin, APITestCase):
         self.assertEqual(booking.provider, self.provider)
         # ``provider`` and ``total_price`` are derived server-side, never
         # trusted from the client payload.
-        self.assertEqual(booking.total_price, Decimal("85.00"))
+        self.assertEqual(booking.service_fee, Decimal("85.00"))
+        self.assertEqual(booking.platform_fee, Decimal("8.50"))
+        self.assertEqual(booking.vat_amount, Decimal("16.83"))
+        self.assertEqual(booking.total_price, Decimal("110.33"))
+        self.assertEqual(resp.data["total_price"], "110.33")
         self.assertEqual(booking.status, Booking.Status.PENDING)
+
+    def test_quote_matches_persisted_booking_and_ignores_client_price_fields(self):
+        self.client.force_authenticate(user=self.customer)
+        payload = {
+            "service": str(self.service.id),
+            "scheduled_date": self.tomorrow().isoformat(),
+            "start_time": "10:00",
+            "end_time": "11:30",
+        }
+        quoted = self.client.post(reverse("bookings:booking-quote"), payload, format="json")
+        self.assertEqual(quoted.status_code, status.HTTP_200_OK, quoted.data)
+        self.assertEqual(quoted.data["service_fee"], "170.00")
+        self.assertEqual(quoted.data["platform_fee"], "17.00")
+        self.assertEqual(quoted.data["vat_amount"], "33.66")
+        self.assertEqual(quoted.data["total_price"], "220.66")
+        created = self.client.post(self.list_url, {
+            **payload, "quoted_total": quoted.data["total_price"],
+            "service_fee": "0.01", "platform_fee": "0.00", "vat_amount": "0.00",
+            "total_price": "0.01",
+        }, format="json")
+        self.assertEqual(created.status_code, status.HTTP_201_CREATED, created.data)
+        for key in ("service_fee", "platform_fee", "vat_amount", "total_price", "currency"):
+            self.assertEqual(created.data[key], quoted.data[key])
+
+    def test_stale_quote_is_rejected_after_price_changes(self):
+        self.client.force_authenticate(user=self.customer)
+        payload = {
+            "service": str(self.service.id),
+            "scheduled_date": self.tomorrow().isoformat(),
+            "start_time": "10:00", "end_time": "11:00",
+        }
+        quoted = self.client.post(reverse("bookings:booking-quote"), payload, format="json")
+        self.assertEqual(quoted.status_code, status.HTTP_200_OK, quoted.data)
+        self.service.price = Decimal("95.00")
+        self.service.save(update_fields=["price"])
+        response = self.client.post(self.list_url, {
+            **payload, "quoted_total": quoted.data["total_price"],
+        }, format="json")
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST, response.data)
+        self.assertIn("quoted_total", response.data)
+        self.assertFalse(Booking.objects.exists())
+
+    def test_booking_retains_quoted_breakdown_after_policy_and_service_change(self):
+        self.client.force_authenticate(user=self.customer)
+        payload = {
+            "service": str(self.service.id),
+            "scheduled_date": self.tomorrow().isoformat(),
+            "start_time": "10:00", "end_time": "11:00",
+        }
+        quote = self.client.post(reverse("bookings:booking-quote"), payload, format="json")
+        created = self.client.post(self.list_url, {
+            **payload, "quoted_total": quote.data["total_price"],
+        }, format="json")
+        self.assertEqual(created.status_code, status.HTTP_201_CREATED, created.data)
+        self.service.price = Decimal("130.00")
+        self.service.save(update_fields=["price"])
+        with override_settings(BOOKING_PLATFORM_FEE_RATE="0.20", BOOKING_VAT_RATE="0.00"):
+            booking = self.client.get(reverse("bookings:booking-detail", args=[created.data["id"]]))
+        for field in ("currency", "service_fee", "platform_fee", "vat_amount", "total_price"):
+            self.assertEqual(booking.data[field], quote.data[field])
+
+    def test_quote_rejects_unavailable_time(self):
+        WeeklyAvailability.objects.filter(
+            provider=self.provider, weekday=self.tomorrow().weekday(),
+        ).delete()
+        self.client.force_authenticate(user=self.customer)
+        response = self.client.post(reverse("bookings:booking-quote"), {
+            "service": str(self.service.id),
+            "scheduled_date": self.tomorrow().isoformat(),
+            "start_time": "10:00", "end_time": "11:00",
+        }, format="json")
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("start_time", response.data)
+
+    @override_settings(BOOKING_PLATFORM_FEE_RATE="0.10", BOOKING_VAT_RATE="0.18")
+    def test_flat_price_rounds_components_to_cents(self):
+        self.service.pricing_type = Service.PricingType.FLAT
+        self.service.price = Decimal("10.05")
+        self.service.save(update_fields=["pricing_type", "price"])
+        self.client.force_authenticate(user=self.customer)
+        payload = {
+            "service": str(self.service.id),
+            "scheduled_date": self.tomorrow().isoformat(),
+            "start_time": "10:00", "end_time": "11:00",
+        }
+        quote = self.client.post(reverse("bookings:booking-quote"), payload, format="json")
+        self.assertEqual(quote.status_code, status.HTTP_200_OK, quote.data)
+        self.assertEqual(quote.data["platform_fee"], "1.01")
+        self.assertEqual(quote.data["vat_amount"], "1.99")
+        self.assertEqual(quote.data["total_price"], "13.05")
 
     def test_provider_cannot_create_booking(self):
         self.client.force_authenticate(user=self.provider_user)
@@ -242,9 +341,37 @@ class BookingAPITests(_BookingFixtureMixin, APITestCase):
             "scheduled_date": self.tomorrow().isoformat(),
             "start_time": "12:00",
             "end_time": "11:00",
+            "quoted_total": "110.33",
         }
         resp = self.client.post(self.list_url, payload, format="json")
         self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_overlapping_booking_returns_validation_error(self):
+        self._seed_booking_for(self.customer)
+        self.client.force_authenticate(user=self.other_customer)
+        resp = self.client.post(self.list_url, {
+            "service": str(self.service.id),
+            "scheduled_date": self.tomorrow().isoformat(),
+            "start_time": "14:30",
+            "end_time": "15:30",
+            "quoted_total": "110.33",
+        }, format="json")
+        self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST, resp.data)
+        self.assertIn("start_time", resp.data)
+        self.assertEqual(Booking.objects.count(), 1)
+
+    def test_adjacent_booking_does_not_overlap(self):
+        self._seed_booking_for(self.customer)
+        self.client.force_authenticate(user=self.other_customer)
+        resp = self.client.post(self.list_url, {
+            "service": str(self.service.id),
+            "scheduled_date": self.tomorrow().isoformat(),
+            "start_time": "15:00",
+            "end_time": "16:00",
+            "quoted_total": "110.33",
+        }, format="json")
+        self.assertEqual(resp.status_code, status.HTTP_201_CREATED, resp.data)
+        self.assertEqual(Booking.objects.count(), 2)
 
     # ---- role-scoped queryset ------------------------------------------
 
@@ -308,3 +435,45 @@ class BookingAPITests(_BookingFixtureMixin, APITestCase):
         self.client.force_authenticate(user=self.provider_user)
         resp = self.client.patch(url, {"status": "cancelled"}, format="json")
         self.assertEqual(resp.status_code, status.HTTP_403_FORBIDDEN)
+
+
+class ConcurrentBookingTests(_BookingFixtureMixin, TransactionTestCase):
+    """Exercise the production row lock using separate database connections."""
+
+    def setUp(self):
+        if connection.vendor != "postgresql":
+            self.skipTest("PostgreSQL row locking is required for this test")
+        self.make_world()
+
+    def test_simultaneous_requests_only_reserve_one_slot(self):
+        barrier = Barrier(2)
+        payload = {
+            "service": str(self.service.id),
+            "scheduled_date": self.tomorrow().isoformat(),
+            "start_time": "10:00",
+            "end_time": "11:00",
+            "quoted_total": "110.33",
+        }
+
+        def create_booking(customer_id):
+            close_old_connections()
+            try:
+                client = APIClient()
+                client.force_authenticate(user=User.objects.get(pk=customer_id))
+                barrier.wait(timeout=10)
+                return client.post(reverse("bookings:booking-list"), payload, format="json")
+            finally:
+                close_old_connections()
+
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            futures = [
+                pool.submit(create_booking, customer.id)
+                for customer in (self.customer, self.other_customer)
+            ]
+            responses = [future.result(timeout=20) for future in futures]
+
+        self.assertCountEqual(
+            [response.status_code for response in responses],
+            [status.HTTP_201_CREATED, status.HTTP_400_BAD_REQUEST],
+        )
+        self.assertEqual(Booking.objects.count(), 1)
