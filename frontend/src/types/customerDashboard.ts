@@ -4,12 +4,12 @@ export interface CustomerDashboardStats {
   activeBookings: number;
   bookingsThisWeek: number;
   bookingsToday: number;
-  inEscrow: number;
+  inEscrow: null;
   pendingCount: number;
-  jobsCompleted: number;
-  /** Fallback until customer review metrics exist in the API. */
-  averageRatingGiven: number;
-  reviewsWritten: number;
+  jobsCompleted: null;
+  /** No payment, completion, or review metrics are exposed by the API yet. */
+  averageRatingGiven: null;
+  reviewsWritten: null;
 }
 
 export interface UpcomingBookingRow {
@@ -25,11 +25,7 @@ export interface UpcomingBookingRow {
 export type ActivityKind =
   | "booking-created"
   | "booking-confirmed"
-  | "booking-cancelled"
-  | "payment-held"
-  | "message"
-  | "review-submitted"
-  | "review-window";
+  | "booking-cancelled";
 
 export interface ActivityEntry {
   id: string;
