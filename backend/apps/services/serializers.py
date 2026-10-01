@@ -180,13 +180,9 @@ class ServiceWriteSerializer(_ServiceBaseSerializer):
 
     class Meta(_ServiceBaseSerializer.Meta):
         fields = _ServiceBaseSerializer.Meta.fields
-        read_only_fields = (
-            "id",
-            "provider",
-            "category",
-            "rating",
-            "created_at",
-            "updated_at",
+        # Providers may see featured status, but only staff may set it.
+        read_only_fields = _ServiceBaseSerializer.Meta.read_only_fields + (
+            "is_featured",
         )
 
     def _resolve_slug(self, attrs: dict, *, instance: Service | None) -> str:
