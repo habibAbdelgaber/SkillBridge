@@ -10,10 +10,6 @@ const TONE: Record<ActivityKind, string> = {
   "booking-created": "bg-sky-50 text-sky-600",
   "booking-confirmed": "bg-sky-100 text-brand-primary",
   "booking-cancelled": "bg-rose-50 text-rose-600",
-  "payment-held": "bg-brand-surface text-brand-logo",
-  message: "bg-brand-surface text-brand-muted",
-  "review-submitted": "bg-sky-100 text-brand-primary",
-  "review-window": "bg-amber-50 text-amber-600",
 };
 
 const ICON: Record<ActivityKind, JSX.Element> = {
@@ -51,45 +47,6 @@ const ICON: Record<ActivityKind, JSX.Element> = {
       aria-hidden="true"
     >
       <path d="M6 6l12 12M18 6l-12 12" strokeLinecap="round" />
-    </svg>
-  ),
-  "payment-held": (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={1.75}
-      className="h-4 w-4"
-      aria-hidden="true"
-    >
-      <rect x="4" y="7" width="16" height="10" rx="2" />
-      <path d="M4 10h16" strokeLinecap="round" />
-    </svg>
-  ),
-  message: (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={1.75}
-      className="h-4 w-4"
-      aria-hidden="true"
-    >
-      <path
-        d="M5 5h14a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H9l-5 4V6a1 1 0 0 1 1-1z"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  ),
-  "review-submitted": (
-    <svg viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4" aria-hidden="true">
-      <path d="M12 2.5l2.95 6 6.6.95-4.78 4.65 1.13 6.55L12 17.55 6.1 20.65l1.13-6.55L2.45 9.45l6.6-.95L12 2.5z" />
-    </svg>
-  ),
-  "review-window": (
-    <svg viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4" aria-hidden="true">
-      <path d="M12 2.5l2.95 6 6.6.95-4.78 4.65 1.13 6.55L12 17.55 6.1 20.65l1.13-6.55L2.45 9.45l6.6-.95L12 2.5z" />
     </svg>
   ),
 };
