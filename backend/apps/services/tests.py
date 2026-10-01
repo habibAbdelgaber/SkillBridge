@@ -131,6 +131,22 @@ class ServicesAPITestCase(APITestCase):
         self.assertEqual(created.provider, self.provider_b)
         self.assertEqual(created.slug, "leaky-faucet-fix")  # auto-derived
 
+    def test_provider_cannot_feature_service_on_create(self):
+        self.client.force_authenticate(user=self.provider_b_user)
+        resp = self.client.post(reverse("services:my-service-list"), {
+            "title": "Featured Attempt",
+            "description": "Provider-supplied promotion flag.",
+            "price": "85.00",
+            "duration_minutes": 60,
+            "location_type": Service.LocationType.ONSITE,
+            "category_id": str(self.cleaning.id),
+            "is_featured": True,
+        }, format="json")
+        self.assertEqual(resp.status_code, status.HTTP_201_CREATED, resp.data)
+        created = Service.objects.get(pk=resp.data["id"])
+        self.assertFalse(created.is_featured)
+        self.assertFalse(resp.data["is_featured"])
+
     def test_create_rejects_inactive_category(self):
         self.client.force_authenticate(user=self.provider_b_user)
         url = reverse("services:my-service-list")
@@ -205,6 +221,26 @@ class ServicesAPITestCase(APITestCase):
         self.assertEqual(resp.status_code, status.HTTP_200_OK, resp.data)
         self.inactive_service.refresh_from_db()
         self.assertTrue(self.inactive_service.is_active)
+
+    def test_provider_cannot_feature_service_on_update(self):
+        self.client.force_authenticate(user=self.provider_a_user)
+        url = reverse("services:my-service-detail", args=[self.active_service.id])
+        resp = self.client.patch(url, {"is_featured": True}, format="json")
+        self.assertEqual(resp.status_code, status.HTTP_200_OK, resp.data)
+        self.active_service.refresh_from_db()
+        self.assertFalse(self.active_service.is_featured)
+        self.assertFalse(resp.data["is_featured"])
+
+    def test_provider_cannot_remove_staff_featured_status(self):
+        self.active_service.is_featured = True
+        self.active_service.save(update_fields=["is_featured"])
+        self.client.force_authenticate(user=self.provider_a_user)
+        url = reverse("services:my-service-detail", args=[self.active_service.id])
+        resp = self.client.patch(url, {"is_featured": False}, format="json")
+        self.assertEqual(resp.status_code, status.HTTP_200_OK, resp.data)
+        self.active_service.refresh_from_db()
+        self.assertTrue(self.active_service.is_featured)
+        self.assertTrue(resp.data["is_featured"])
 
     # ---- public provider directory ----------------------------------------
 
