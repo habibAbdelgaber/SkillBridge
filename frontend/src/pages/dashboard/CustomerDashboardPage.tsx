@@ -12,12 +12,6 @@ import { useAuthStore } from "@/store/authStore";
 import type { CustomerDashboardSnapshot } from "@/types/customerDashboard";
 import { cn } from "@/utils/cn";
 
-const CURRENCY = new Intl.NumberFormat("en-US", {
-  style: "currency",
-  currency: "USD",
-  maximumFractionDigits: 0,
-});
-
 export function CustomerDashboardPage() {
   const user = useAuthStore((s) => s.user);
   const [snapshot, setSnapshot] = useState<CustomerDashboardSnapshot | null>(null);
@@ -130,33 +124,21 @@ function Body({ snapshot }: BodyProps) {
           className="min-h-[88px] p-4"
         />
         <StatCard
-          label="In escrow"
-          value={CURRENCY.format(stats.inEscrow)}
-          hint={`across ${stats.pendingCount + stats.bookingsThisWeek} jobs`}
+          label="Payments"
+          value="—"
+          hint="Payment data unavailable"
           className="min-h-[88px] p-4"
         />
         <StatCard
           label="Jobs completed"
-          value={stats.jobsCompleted}
-          hint="this year"
+          value="—"
+          hint="Completion data unavailable"
           className="min-h-[88px] p-4"
         />
         <StatCard
           label="Average rating given"
-          value={
-            <span className="inline-flex items-baseline gap-1.5">
-              {stats.averageRatingGiven.toFixed(1)}
-              <svg
-                viewBox="0 0 24 24"
-                fill="currentColor"
-                className="h-5 w-5 self-center text-amber-400"
-                aria-hidden="true"
-              >
-                <path d="M12 2.5l2.95 6 6.6.95-4.78 4.65 1.13 6.55L12 17.55 6.1 20.65l1.13-6.55L2.45 9.45l6.6-.95L12 2.5z" />
-              </svg>
-            </span>
-          }
-          hint={`${stats.reviewsWritten} reviews`}
+          value="—"
+          hint="Review data unavailable"
           className="min-h-[88px] p-4"
         />
       </div>

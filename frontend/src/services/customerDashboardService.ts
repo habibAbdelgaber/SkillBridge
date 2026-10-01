@@ -1,6 +1,5 @@
 /** Customer dashboard data aggregator. */
 import { bookingService } from "@/services/bookingService";
-import { CUSTOMER_DASHBOARD_FALLBACKS } from "@/services/customerDashboardFallbacks";
 import type { AuthUser } from "@/types/auth";
 import type { Booking } from "@/types/booking";
 import type {
@@ -32,7 +31,7 @@ export async function loadCustomerDashboard(
         ? "Here's what's happening with your bookings."
         : "Browse the marketplace to find your first pro.",
     },
-    stats: computeStats(user, bookings, now),
+    stats: computeStats(bookings, now),
     upcoming: buildUpcoming(bookings, now),
     activity: buildActivity(bookings, now),
     rawBookings: bookings,
@@ -59,11 +58,7 @@ function combineDateTime(isoDate: string, hhmm: string): Date {
   return new Date(y ?? 1970, (m ?? 1) - 1, d ?? 1, hh ?? 0, mm ?? 0);
 }
 
-function computeStats(
-  user: AuthUser,
-  bookings: Booking[],
-  now: Date,
-): CustomerDashboardStats {
+function computeStats(bookings: Booking[], now: Date): CustomerDashboardStats {
   const todayKey = isoDay(now);
   const horizon = new Date(now);
   horizon.setDate(now.getDate() + 7);
@@ -72,22 +67,15 @@ function computeStats(
   let activeBookings = 0;
   let bookingsToday = 0;
   let bookingsThisWeek = 0;
-  let inEscrow = 0;
   let pendingCount = 0;
-  let jobsCompleted = 0;
 
   for (const booking of bookings) {
     if (booking.status === "cancelled") continue;
-    const total = Number(booking.totalPrice) || 0;
     const endAt = combineDateTime(booking.scheduledDate, booking.endTime);
 
     if (booking.status === "pending") pendingCount += 1;
-    if (booking.status === "confirmed") inEscrow += total;
 
-    if (endAt < now) {
-      // Booking completion is inferred until the API exposes a completed status.
-      jobsCompleted += 1;
-    } else {
+    if (endAt >= now) {
       activeBookings += 1;
       if (booking.scheduledDate === todayKey) bookingsToday += 1;
       if (booking.scheduledDate >= todayKey && booking.scheduledDate <= horizonKey) {
@@ -100,11 +88,11 @@ function computeStats(
     activeBookings,
     bookingsToday,
     bookingsThisWeek,
-    inEscrow,
+    inEscrow: null,
     pendingCount,
-    jobsCompleted,
-    averageRatingGiven: CUSTOMER_DASHBOARD_FALLBACKS.averageRatingGiven(user, bookings),
-    reviewsWritten: CUSTOMER_DASHBOARD_FALLBACKS.reviewsWritten(user, bookings),
+    jobsCompleted: null,
+    averageRatingGiven: null,
+    reviewsWritten: null,
   };
 }
 
@@ -145,7 +133,7 @@ function buildUpcoming(bookings: Booking[], now: Date): UpcomingBookingRow[] {
 }
 
 function buildActivity(bookings: Booking[], now: Date): ActivityEntry[] {
-  // Temporary activity feed built from booking rows.
+  // Only booking records and their persisted status are available here.
   const events: Array<{ at: Date; entry: ActivityEntry }> = [];
   for (const booking of bookings) {
     const created = new Date(booking.createdAt);
@@ -171,16 +159,6 @@ function buildActivity(bookings: Booking[], now: Date): ActivityEntry[] {
           timeAgo(updated, now),
         ),
       });
-      events.push({
-        at: updated,
-        entry: makeEntry(
-          `${booking.id}-escrow`,
-          "payment-held",
-          "Payment held in escrow",
-          `${PRICE_FMT.format(Number(booking.totalPrice) || 0)} · ${booking.provider.businessName}`,
-          timeAgo(updated, now),
-        ),
-      });
     }
     if (booking.status === "cancelled") {
       events.push({
@@ -191,19 +169,6 @@ function buildActivity(bookings: Booking[], now: Date): ActivityEntry[] {
           "Booking cancelled",
           booking.service.title,
           timeAgo(updated, now),
-        ),
-      });
-    }
-    const endAt = combineDateTime(booking.scheduledDate, booking.endTime);
-    if (booking.status === "confirmed" && endAt < now) {
-      events.push({
-        at: endAt,
-        entry: makeEntry(
-          `${booking.id}-review`,
-          "review-submitted",
-          "Review submitted",
-          booking.provider.businessName,
-          timeAgo(endAt, now),
         ),
       });
     }
