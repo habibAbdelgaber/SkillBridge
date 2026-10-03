@@ -205,11 +205,23 @@ export const bookingService = {
 
   async list(): Promise<Booking[]> {
     try {
-      const { data } = await apiClient.get<{ results: ApiBooking[] } | ApiBooking[]>(
-        ENDPOINTS.bookings,
-      );
-      const rows = Array.isArray(data) ? data : (data.results ?? []);
-      return rows.map(mapBooking);
+      const bookings: Booking[] = [];
+      let page = 1;
+      // DRF uses page-number pagination. Follow every page before computing
+      // dashboard totals, so bookings beyond the default first 20 are included.
+      while (true) {
+        const { data } = await apiClient.get<
+          { results: ApiBooking[]; next: string | null } | ApiBooking[]
+        >(ENDPOINTS.bookings, page === 1 ? undefined : { params: { page } });
+        if (Array.isArray(data)) {
+          bookings.push(...data.map(mapBooking));
+          break;
+        }
+        bookings.push(...data.results.map(mapBooking));
+        if (!data.next) break;
+        page += 1;
+      }
+      return bookings;
     } catch (error) {
       throw normalizeError(error, "Failed to load bookings.");
     }
